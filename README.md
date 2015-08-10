@@ -10,7 +10,7 @@ little fixes to package plm (panel model estimation) for R
   [see http://stackoverflow.com/questions/31894055/pdwtest-from-plm-with-wrong-p-value-for-pooled-ols-durbin-watson-test-for-autoc]
 
 
-# Instruction:
+# Instructions
  load this file after package plm is loaded
  The following functions are then masked:
    - pdwtest.panelmodel() (used by pdwtest())
