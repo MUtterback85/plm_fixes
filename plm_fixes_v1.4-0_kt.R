@@ -182,7 +182,7 @@ print.summary.plm <- function(x,digits= max(3, getOption("digits") - 2),
   if (model=="random"){
     ercomp <- plm:::describe(x, "random.method")
     cat(paste(" \n   (",
-              random.method.list[ercomp],
+              plm:::random.method.list[ercomp],
               "'s transformation)\n",
               sep=""))
   }
