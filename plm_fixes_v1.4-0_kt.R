@@ -14,7 +14,7 @@
 #       (marked with:  Statisticians: Can someone please look into this?)
 #
 
-# Instruction
+# Instructions
 # load this file after package plm is loaded
 # The following functions are then masked:
 #   - pdwtest.panelmodel() and pdwtest.formula (used by pdwtest())
