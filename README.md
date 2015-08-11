@@ -11,7 +11,7 @@ no warranty
  Durbin-Watson test respecting panel structure
   [see http://stackoverflow.com/questions/31894055/pdwtest-from-plm-with-wrong-p-value-for-pooled-ols-durbin-watson-test-for-autoc]
 
-Note: There are some points noted down below which I am not sure how to handle
+Note: There are some points in the file which I am not sure how to handle
        (marked with:  Statisticians: Can someone please look into this?)
 
 
