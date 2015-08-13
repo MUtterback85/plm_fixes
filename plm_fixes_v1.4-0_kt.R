@@ -277,8 +277,7 @@ baltagi_li <- function (x,
   
   # Implementation for unblanaced panels
   if (effect != "individual") {stop("Not implemented. Only individual effects are implemented.")}  
-  if (type != "bp") {stop("Only Breusch-Pagan for unbalanced panels implemented.")}
-  
+
   T_i <- as.numeric(table(id))
   T_mean <- mean(T_i)
   
