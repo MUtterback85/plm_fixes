@@ -1,6 +1,7 @@
 # Own quick'n'dirty fixes (?) to plm version 1.4-0
 # no warranty
 #
+# this version 0.3
 #
 # Instructions
 # load this file after package plm is loaded
@@ -283,22 +284,20 @@ baltagi_li <- function (x,
   
   A1 <-  1 - sum(tapply(res,id,sum)^2)/sum(res^2)
   term <- sum(T_i^2) - (n * T_mean)
-  
   bp_stat_baltagi_li <- (((n * T_mean)^2) / 2) * ( A1^2 / term)
   
   names(bp_stat_baltagi_li) <- "BP_unbalanced"
+  parameter <- 1
+  names(parameter) <- "df"
+  
   
   res <- list(statistic = bp_stat_baltagi_li,
-              p.value = NULL,
-              parameter = NULL,
-              method = "Breusch-Pagan Test for unbalanced Panels as in Baltagi/Li (1990) \n
-                        p-value computation not implemented",
+              p.value = pchisq(bp_stat_baltagi_li, df = 1, lower.tail = FALSE),
+              parameter = parameter,
+              method = "Lagrange Multiplier Test - individual effects - Breusch-Pagan Test for unbalanced Panels as in Baltagi/Li (1990) \n",
               data.name = plm:::data.name(x),
-              
               alternative = "significant effects")
   class(res) <- "htest"
-  
-  
   return(res)
 } # END baltagi_li
 
