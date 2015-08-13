@@ -14,6 +14,9 @@ no warranty
 Note: There are some points in the file which I am not sure how to handle
        (marked with:  Statisticians: Can someone please look into this?)
 
+Breusch-Pagan test for random effects for unbalanced panels as in Baltagi/Li (1991)
+ [see http://stackoverflow.com/questions/31988449/implementation-of-breusch-pagan-test-for-random-effects-in-plm-with-unbalanced-p]
+
 
  Instructions:
  
