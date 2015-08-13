@@ -1,7 +1,7 @@
 # Own quick'n'dirty fixes (?) to plm version 1.4-0
 # no warranty
 #
-# this version 0.3
+# Version of this file 0.3-1
 #
 # Instructions
 # load this file after package plm is loaded
@@ -251,7 +251,7 @@ print.summary.plm <- function(x,digits= max(3, getOption("digits") - 2),
 
 
 ################  Breusch-Pagan test for random effects model for unbalanced data ################  
-################  run instead of original plmtest() 
+################  run instead of original plmtest() - but see below for a wrapper version of plmtest()
 # Breusch-Pagan test for random effects model for unbalanced data 
 # Baltagi/Li (1990), A lagrange multiplier test for the error components model with incomplete panels,
 #                    Econometric Reviews, 9:1, 103-107, DOI: 10.1080/07474939008800180
@@ -286,15 +286,13 @@ baltagi_li <- function (x,
   term <- sum(T_i^2) - (n * T_mean)
   bp_stat_baltagi_li <- (((n * T_mean)^2) / 2) * ( A1^2 / term)
   
-  names(bp_stat_baltagi_li) <- "BP_unbalanced"
   parameter <- 1
   names(parameter) <- "df"
-  
-  
-  res <- list(statistic = bp_stat_baltagi_li,
+
+  res <- list(statistic = c(chisq  = bp_stat_baltagi_li),
               p.value = pchisq(bp_stat_baltagi_li, df = 1, lower.tail = FALSE),
               parameter = parameter,
-              method = "Lagrange Multiplier Test - individual effects - Breusch-Pagan Test for unbalanced Panels as in Baltagi/Li (1990) \n",
+              method = "Lagrange Multiplier Test - individual effects - Breusch-Pagan Test for unbalanced Panels as in Baltagi/Li (1990)",
               data.name = plm:::data.name(x),
               alternative = "significant effects")
   class(res) <- "htest"
@@ -331,11 +329,10 @@ plmtest.plm <- function(x,
   
   if (balanced == F) { # for unbalanced panels, we need Baltagi/Li (1990)
     
-    # Implementation for unblanaced panels
- 
+    # Implementation for unbalanced panels
     return(baltagi_li(x))
     
-  } else { ### balanced panel => use original implementation of plm
+  } else { ### balanced panel => use original implementation of plm [I copied it in here]
     
     if (effect != "twoways"){
       if (!type %in% c("honda", "bp"))
@@ -386,7 +383,7 @@ plmtest.plm <- function(x,
       res <- list(statistic = stat,
                   p.value   = pval,
                   method    = method,
-                  data.name = data.name(x))
+                  data.name = plm:::data.name(x))
     }
     else{
       names(parameter) <- "df"
@@ -402,5 +399,5 @@ plmtest.plm <- function(x,
     
     
   }
-}
+} # END plmtest()
 
