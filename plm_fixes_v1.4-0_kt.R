@@ -7,7 +7,7 @@
 # The following functions are then masked:
 #   - pdwtest.panelmodel() and pdwtest.formula (used by pdwtest())
 #   - summary.plm() and print.summary.plm() (used by summary())
-#   - plmtest() [additionally Baltagi/Li (1991) is directly available by baltagi_li()]
+#   - plmtest() [additionally Baltagi/Li (1990) is directly available by baltagi_li()]
 
 
 
@@ -24,7 +24,7 @@
 #       (marked with:  Statisticians: Can someone please look into this?)
 #
 
-## Breusch-Pagan test for random effects for unbalanced panels as in Baltagi/Li (1991)
+## Breusch-Pagan test for random effects for unbalanced panels as in Baltagi/Li (1990)
 # [see http://stackoverflow.com/questions/31988449/implementation-of-breusch-pagan-test-for-random-effects-in-plm-with-unbalanced-p]
 #
 # References: 
@@ -306,7 +306,7 @@ baltagi_li <- function (x,
 
 
 ############## plmtest() ############################################
-## modified to handle unblanced panels as in Baltagi/li (1991) ######
+## modified to handle unblanced panels as in Baltagi/li (1990) ######
 
 plmtest <- function(x,...){
   UseMethod("plmtest")
