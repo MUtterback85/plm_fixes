@@ -28,4 +28,5 @@ Breusch-Pagan test for random effects for unbalanced panels as in Baltagi/Li (19
  The following functions are then masked:
    - pdwtest.panelmodel() and pdwtest.formula (used by pdwtest())
    - summary.plm() and print.summary.plm() (used by summary())
+   - plmtest()
 
