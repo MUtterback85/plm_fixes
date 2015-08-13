@@ -22,7 +22,7 @@ Breusch-Pagan test for random effects for unbalanced panels as in Baltagi/Li (19
  [see http://stackoverflow.com/questions/31988449/implementation-of-breusch-pagan-test-for-random-effects-in-plm-with-unbalanced-p]
 
 
- ##Instructions:
+ ## Instructions:
  
  Load this file after package plm is loaded. The following functions are then masked:
    - pdwtest.panelmodel() and pdwtest.formula (used by pdwtest())
