@@ -1,7 +1,7 @@
 # Own quick'n'dirty fixes (?) to plm version 1.4-0
 # no warranty
 #
-# Version of this file 0.3-1
+# Version of this file 0.3-2
 #
 # Instructions
 # load this file after package plm is loaded
@@ -276,7 +276,7 @@ baltagi_li <- function (x,
   res <- resid(x)
   ### END this is from original plmtst() ###
   
-  # Implementation for unblanaced panels
+  # Implementation for unbalanced panels
   if (effect != "individual") {stop("Not implemented. Only individual effects are implemented.")}  
 
   T_i <- as.numeric(table(id))
@@ -303,7 +303,7 @@ baltagi_li <- function (x,
 
 
 ############## plmtest() ############################################
-## modified to handle unblanced panels as in Baltagi/li (1990) ######
+## modified to handle unbalanced panels as in Baltagi/li (1990) ######
 
 plmtest <- function(x,...){
   UseMethod("plmtest")
