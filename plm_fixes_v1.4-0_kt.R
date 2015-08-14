@@ -1,14 +1,15 @@
 # Own quick'n'dirty fixes (?) to plm version 1.4-0
 # no warranty
+# License: GPL
 #
-# Version of this file 0.3-2
+# Version of this file 0.3-3
 #
-# Instructions
+# Instructions:
 # load this file after package plm is loaded
 # The following functions are then masked:
 #   - pdwtest.panelmodel() and pdwtest.formula (used by pdwtest())
 #   - summary.plm() and print.summary.plm() (used by summary())
-#   - plmtest() [additionally Baltagi/Li (1990) is directly available by baltagi_li()]
+#   - plmtest() [additionally Baltagi/Li (1990) is directly available by baltagi_li_re()]
 
 
 
@@ -257,7 +258,7 @@ print.summary.plm <- function(x,digits= max(3, getOption("digits") - 2),
 #                    Econometric Reviews, 9:1, 103-107, DOI: 10.1080/07474939008800180
 #
 # for individual effects
-baltagi_li <- function (x,
+baltagi_li_re <- function (x,
                         effect = c("individual", "time", "twoways"),
                         type = c("honda", "bp", "ghm","kw"),
                         ...) {
@@ -330,7 +331,7 @@ plmtest.plm <- function(x,
   if (balanced == F) { # for unbalanced panels, we need Baltagi/Li (1990)
     
     # Implementation for unbalanced panels
-    return(baltagi_li(x))
+    return(baltagi_li_re(x))
     
   } else { ### balanced panel => use original implementation of plm [I copied it in here]
     
