@@ -1,8 +1,8 @@
-# Own quick'n'dirty fixes (?) to plm version 1.4-0
+# Own quick'n'dirty fixes (?)/enhancements to plm version 1.4-0
 # no warranty
 # License: GPL
 #
-# Version of this file 0.3-3
+# Version of this file 0.3-4
 #
 # Instructions:
 # load this file after package plm is loaded
@@ -10,6 +10,7 @@
 #   - pdwtest.panelmodel() and pdwtest.formula (used by pdwtest())
 #   - summary.plm() and print.summary.plm() (used by summary())
 #   - plmtest() [additionally Baltagi/Li (1990) is directly available by baltagi_li_re()]
+#   - pbgtest() allows to pass on type="F" to lmtest::bgtest(), thus offering the small sample test (F test)
 
 
 
@@ -35,7 +36,7 @@
 #        
 # see how STATA does it and this produces the same statistic: http://www.stata.com/manuals13/xtxtregpostestimation.pdf
 
-
+# Breusch-Godfrey test for autocorrelation: pbgtest() now passes on type="F" to lmtst:bgtest() for small sample test
 
 
 
@@ -401,4 +402,59 @@ plmtest.plm <- function(x,
     
   }
 } # END plmtest()
+
+
+############### Breusch-Godfrey test ##################################
+### fixed pbgtest(), copied over from https://r-forge.r-project.org/scm/viewvc.php/pkg/R/pserial.R?view=markup&root=plm&pathrev=127
+# pbgtest() suffered from the same problem as pdwtest() [intercept passed twice to lmtest::bgtest()] - incorporated that from r-forge
+#
+# additional fix: match arguments, so that type="F" (order.by) and is passed on to lmtest::bgtest(), thus enabling the small sample
+#                 variant of the test offered by lmtest::pbgtest()
+
+
+pbgtest.panelmodel<-function(x, order = NULL, ...) {
+  ## residual serial correlation test based on the residuals of the demeaned
+  ## model (see Wooldridge p.288) and the regular bgtest() in {lmtest}
+  
+  ## structure:
+  ## 1: take demeaned data from 'plm' object
+  ## 2: est. auxiliary model by OLS on demeaned data
+  ## 3: apply bgtest() to auxiliary model and return the result
+  
+  model <- plm:::describe(x, "model")
+  effect <- plm:::describe(x, "effect")
+  theta <- x$ercomp$theta
+  
+  ## retrieve demeaned data
+  demX <- model.matrix(x, model = model, effect = effect, theta=theta)
+  demy <- pmodel.response(model.frame(x), model = model, effect = effect, theta=theta)
+  
+  ## ...and group numerosities
+  Ti <- pdim(x)$Tint$Ti
+  ## set lag order to minimum group numerosity if not specified by user
+  ## (check whether this is sensible)
+  
+  if(is.null(order)) order <- min(Ti)
+  ## bg test on the demeaned model:
+  
+  ## check package availability and load if necessary
+  #lm.ok <- require("lmtest")
+  #if(!lm.ok) stop("package lmtest is needed but not available")
+  
+  ## bgtest is the bgtest, exception made for the method attribute
+  dots <- match.call(expand.dots=FALSE)[["..."]]
+  if (!is.null(dots$type)) type <- dots$type else type <- "Chisq"
+  if (!is.null(dots$order.by)) order.by <- dots$order.by else order.by <- NULL
+  
+  auxformula <- demy~demX-1 #if(model == "within") demy~demX-1 else demy~demX
+  lm.mod <- lm(auxformula)
+  bgtest <- bgtest(lm.mod, order = order, type = type, order.by = order.by)
+  bgtest$method <- "Breusch-Godfrey/Wooldridge test for serial correlation in panel models"
+  bgtest$alternative <- "serial correlation in idiosyncratic errors"
+  bgtest$data.name <- paste(deparse(x$call$formula))
+  names(bgtest$statistic) <- if(length(bgtest$parameter)==1) "chisq" else "F"
+  return(bgtest)
+}
+
+
 
