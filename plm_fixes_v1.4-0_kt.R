@@ -2,7 +2,7 @@
 # no warranty
 # License: GPL
 #
-# Version of this file 0.3-4
+# Version of this file 0.3-5
 #
 # Instructions:
 # load this file after package plm is loaded
@@ -409,7 +409,7 @@ plmtest.plm <- function(x,
 # pbgtest() suffered from the same problem as pdwtest() [intercept passed twice to lmtest::bgtest()] - incorporated that from r-forge
 #
 # additional fix: match arguments, so that type="F" (and order.by=) and is passed on to lmtest::bgtest(), thus enabling the small sample
-#                 variant of the test offered by lmtest::pbgtest()
+#                 variant of the test offered by lmtest::bgtest()
 
 
 pbgtest.panelmodel<-function(x, order = NULL, ...) {
