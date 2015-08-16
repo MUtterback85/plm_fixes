@@ -408,7 +408,7 @@ plmtest.plm <- function(x,
 ### fixed pbgtest(), copied over from https://r-forge.r-project.org/scm/viewvc.php/pkg/R/pserial.R?view=markup&root=plm&pathrev=127
 # pbgtest() suffered from the same problem as pdwtest() [intercept passed twice to lmtest::bgtest()] - incorporated that from r-forge
 #
-# additional fix: match arguments, so that type="F" (order.by) and is passed on to lmtest::bgtest(), thus enabling the small sample
+# additional fix: match arguments, so that type="F" (and order.by=) and is passed on to lmtest::bgtest(), thus enabling the small sample
 #                 variant of the test offered by lmtest::pbgtest()
 
 
