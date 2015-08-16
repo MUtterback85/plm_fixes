@@ -1,4 +1,4 @@
-#Own quick'n'dirty fixes (?) to plm version 1.4-0
+#Own quick'n'dirty fixes (?)/enhancements to plm version 1.4-0
 
 no warranty
 
