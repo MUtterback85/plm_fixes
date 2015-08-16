@@ -21,6 +21,8 @@ Note: There are some points in the file which I am not sure how to handle
 Breusch-Pagan test for random effects for unbalanced panels as in Baltagi/Li (1991)
  [see http://stackoverflow.com/questions/31988449/implementation-of-breusch-pagan-test-for-random-effects-in-plm-with-unbalanced-p]
 
+##### Breusch-Godfrey test for autocorrelation (serial correlation) - enabling small sample test
+Allow further arguments to be passed on to lmtest::bgtest(), esp. type="F", which enables the small sample test (F test)
 
 ## How to use
  
@@ -28,4 +30,5 @@ Breusch-Pagan test for random effects for unbalanced panels as in Baltagi/Li (19
    - pdwtest.panelmodel() and pdwtest.formula (used by pdwtest())
    - summary.plm() and print.summary.plm() (used by summary())
    - plmtest()
+   - pbgtest.panelmodel() 
 
