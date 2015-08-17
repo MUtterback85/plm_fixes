@@ -27,6 +27,9 @@ Allow further arguments to be passed on to lmtest::bgtest(), esp. type="F", whic
 ##### Baltagi/Li (1995) test: added panelmodel interface for convenience
 plm 1.4-0 only offers the formula interface for this test. Using the formula interface is a bit cumbersome as it makes many assumptions on how the arguments should be formed. Calling the panelmodel interface is easier.
 
+#### Baltagi/Li (1991) in pbsystest(): fixed degrees of freedom; added check for correct input
+
+#### Baltagi/Li (1995): implemented statistic and test for LM5 (LM test for first-order serial correlation in a fixed effects model)
 
 ## How to use
  
@@ -36,4 +39,6 @@ plm 1.4-0 only offers the formula interface for this test. Using the formula int
    - plmtest()
    - pbgtest.panelmodel() 
    - pbltest(): added panelmodel interface
+   - pbsytest(): fixed degrees of freedom error when test="j" (Baltagi/Li (1991))
+   - pbltest_lm5: new function added to compute test statistic LM5 from Baltagi/Li (1995)
 
