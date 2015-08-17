@@ -2,7 +2,7 @@
 # no warranty
 # License: GPL
 #
-# Version of this file 0.3-8
+# Version of this file 0.3-9
 #
 # Instructions:
 # load this file after package plm is loaded
@@ -12,6 +12,7 @@
 #   - plmtest() [additionally Baltagi/Li (1990) is directly available by baltagi_li_re()]
 #   - pbgtest() allows to pass on type="F" to lmtest::bgtest(), thus offering the small sample test (F test)
 #   - pbltest(): added panelmodel interface
+#   - pbsytest(): fixed degrees of freedom error when test="j" (Baltagi/Li (1991))
 #   - pbltest_lm5: new function added to compute test statistic LM5 from Baltagi/Li (1995)
 
 
