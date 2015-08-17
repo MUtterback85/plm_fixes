@@ -24,6 +24,10 @@ Breusch-Pagan test for random effects for unbalanced panels as in Baltagi/Li (19
 ##### Breusch-Godfrey test for autocorrelation (serial correlation) - enabling small sample test
 Allow further arguments to be passed on to lmtest::bgtest(), esp. type="F", which enables the small sample test (F test)
 
+##### Baltagi/Li (1995) test: added panelmodel interface for convenience
+plm 1.4-0 only offers the formula interface for this test. Using the formula interface is a bit cumbersome as it makes many assumptions on how the arguments should be formed. Calling the panelmodel interface is easier.
+
+
 ## How to use
  
  Load this file after package plm is loaded. The following functions are then masked:
@@ -31,4 +35,5 @@ Allow further arguments to be passed on to lmtest::bgtest(), esp. type="F", whic
    - summary.plm() and print.summary.plm() (used by summary())
    - plmtest()
    - pbgtest.panelmodel() 
+   - pbltest(): added panelmodel interface
 
