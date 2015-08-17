@@ -2,7 +2,7 @@
 # no warranty
 # License: GPL
 #
-# Version of this file 0.3-5
+# Version of this file 0.3-7
 #
 # Instructions:
 # load this file after package plm is loaded
@@ -11,6 +11,7 @@
 #   - summary.plm() and print.summary.plm() (used by summary())
 #   - plmtest() [additionally Baltagi/Li (1990) is directly available by baltagi_li_re()]
 #   - pbgtest() allows to pass on type="F" to lmtest::bgtest(), thus offering the small sample test (F test)
+#   - pbltest(): added panelmodel interface
 
 
 
@@ -34,13 +35,13 @@
 # Baltagi/Li (1990), A lagrange multiplier test for the error components model with incomplete panels,
 #                    Econometric Reviews, 9:1, 103-107, DOI: 10.1080/07474939008800180
 #        
-# see how STATA does it and this produces the same statistic: http://www.stata.com/manuals13/xtxtregpostestimation.pdf
+# see how STATA does it and this produces the same statistic: http://www.stata.com/manuals14/xtxtregpostestimation.pdf
 
 # Breusch-Godfrey test for autocorrelation: pbgtest() now passes on type="F" to lmtst:bgtest() for small sample test
 
 
 
-################## pdwtest.panelmodel() adapted from pseries.R ##################
+################## pdwtest.panelmodel() adapted from pseries.R [Durbin-Watson test] ##################
 pdwtest.panelmodel <- function(x,...) {
   ## residual serial correlation test based on the residuals of the demeaned
   ## model and the regular dwtest() in {lmtest}
@@ -86,13 +87,15 @@ pdwtest.panelmodel <- function(x,...) {
   #### => Results deviates from just applying lmtest's dwtest (regular Durbin Watson test) to the residuals
   #### (gretl also respects the panel structure for Durbin-Watson test for pooled OLS models)
   #
-  # Implemented: approach of Bhargava et al. (1982)
+  # Implemented: approach of Bhargava et al. (1982) for (balanced) panels
   # reference: Bhargava/Franzini/Narendranathan, Serial Correlation and the Fixed Effects Model, Review of Economic Studies (1982), XLIX, pp. 533-549
   #
   # Not implemented:
   # Statisticians: Can someone please look into this?
-  # There seems to be an modified version which accounts for unbalanced and unequally spaced data:
+  # There seems to be an modified version of Bhargava et al. (1982) which accounts for unbalanced and unequally spaced data
+  # and an additional test Baltagi/Wu_LBI in this reference
   # Baltagi, B. H., and P. X. Wu. 1999. Unequally spaced panel data regressions with AR(1) disturbances. Econometric Theory 15, pp 814-823.
+  # STATA has modified.Bhargava et al. (1982) and Baltagi/Wu LBI: http://www.stata.com/manuals14/xtxtregar.pdf
   # 
   
   # For FE and RE, we  need to take the panel structure into account
@@ -107,6 +110,8 @@ pdwtest.panelmodel <- function(x,...) {
     # if passed model is already FE or pooled OLS => go ahead
     mod_to_test <- if (model == "random") fe_mod <- plm(x$formula, data = model.frame(x), model="within") else x
     
+    if (pdim(mod_to_test)$balanced != TRUE) warning("Applying Bhargava et al. (1982) Durbin-Watson test for balanced panels to an unbalanced panel.")
+  
     # residuals are now class pseries, so diff.pseries is used and the differences are computed within observational units
     # (not across as it would be the case if base::diff() is used and as it is done for lm-objects)
     # NAs are introduced by the differencing as one observation is lost per observational unit
@@ -118,8 +123,8 @@ pdwtest.panelmodel <- function(x,...) {
     # constuct htest object
     names(dw) <- "DW"
     ARtest <- list(statistic = dw,
-                   method = "Durbin-Watson test for serial correlation in panel models (pooled OLS, within (fixed) and random effects) \n
-                   For random effects models, the Durbin-Watson statistic is calculated to the coresponding fixed effect model. \n
+                   method = "Bhargava et al. (1982): Durbin-Watson test for serial correlation in balanced panel models (pooled OLS, within (fixed) and random effects) \n
+                   For random effects models, the Durbin-Watson statistic is calculated to the corresponding fixed effect model. \n
                    No p-value computed as distubution of statistic under panel assumptions is difficult to calculate.",
                    alternative = NULL, p.value = NULL, data.name = paste(deparse(x$formula)))
     
@@ -286,20 +291,20 @@ baltagi_li_re <- function (x,
   
   A1 <-  1 - sum(tapply(res,id,sum)^2)/sum(res^2)
   term <- sum(T_i^2) - (n * T_mean)
-  bp_stat_baltagi_li <- (((n * T_mean)^2) / 2) * ( A1^2 / term)
+  bp_stat_baltagi_li_re <- (((n * T_mean)^2) / 2) * ( A1^2 / term)
   
   parameter <- 1
   names(parameter) <- "df"
 
-  res <- list(statistic = c(chisq  = bp_stat_baltagi_li),
-              p.value = pchisq(bp_stat_baltagi_li, df = 1, lower.tail = FALSE),
+  res <- list(statistic = c(chisq  = bp_stat_baltagi_li_re),
+              p.value = pchisq(bp_stat_baltagi_li_re, df = 1, lower.tail = FALSE),
               parameter = parameter,
               method = "Lagrange Multiplier Test - individual effects - Breusch-Pagan Test for unbalanced Panels as in Baltagi/Li (1990)",
               data.name = plm:::data.name(x),
               alternative = "significant effects")
   class(res) <- "htest"
   return(res)
-} # END baltagi_li
+} # END baltagi_li_re
 
 
 
@@ -456,5 +461,30 @@ pbgtest.panelmodel<-function(x, order = NULL, ...) {
   return(bgtest)
 }
 
+
+
+
+######### pbltest(): added panelmodel interface ########
+# Baltagi and Li Serial Dependence Test For Random Effects Models
+#
+# Add panelmodel interface
+# This is a wrapper: using the formula interface is a bit cumbersome as it makes many
+# assumptions on how the arguments should be formed. Calling the panelmodel interface is easier.
+
+pbltest.formula <- pbltest
+
+pbltest <- function (x, alternative = c("twosided", "onesided"), index = NULL, ...) 
+{
+  UseMethod("pbltest")
+}
+
+pbltest.panelmodel <- function(x, ...) {
+
+  # only continue if random effects model
+  if (plm:::describe(x, "model") != "random") stop("Test only for random effects models.")
+  
+  # call pbltest.formula in the right way
+  pbltest.formula(formula(x$formula), data=cbind(index(x), x$model), index=names(index(x)), ...)
+}
 
 
