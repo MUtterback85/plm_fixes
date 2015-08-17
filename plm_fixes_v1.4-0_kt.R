@@ -2,7 +2,7 @@
 # no warranty
 # License: GPL
 #
-# Version of this file 0.3-7
+# Version of this file 0.3-8
 #
 # Instructions:
 # load this file after package plm is loaded
@@ -12,7 +12,7 @@
 #   - plmtest() [additionally Baltagi/Li (1990) is directly available by baltagi_li_re()]
 #   - pbgtest() allows to pass on type="F" to lmtest::bgtest(), thus offering the small sample test (F test)
 #   - pbltest(): added panelmodel interface
-
+#   - pbltest_lm5: new function added to compute test statistic LM5 from Baltagi/Li (1995)
 
 
 #
@@ -473,8 +473,7 @@ pbgtest.panelmodel<-function(x, order = NULL, ...) {
 
 pbltest.formula <- pbltest
 
-pbltest <- function (x, alternative = c("twosided", "onesided"), index = NULL, ...) 
-{
+pbltest <- function (x, alternative = c("twosided", "onesided"), index = NULL, ...) {
   UseMethod("pbltest")
 }
 
@@ -486,5 +485,186 @@ pbltest.panelmodel <- function(x, ...) {
   # call pbltest.formula in the right way
   pbltest.formula(formula(x$formula), data=cbind(index(x), x$model), index=names(index(x)), ...)
 }
+
+
+############# Baltagi/Li (1995), LM5
+# LM5 (p. 138-139: An LM test for first-order serial correlation in a fixed effects model):
+# LM5 is LM3 (from p. 136) only with the residuals of the FE model instead of the OLS model (in matrix B)
+# Thus, matrix B calculated in pblsytest is already in the right form for LM5 but need to
+# subsitute the residuals for the FE residuals.
+
+# p. 136: "LM1, is exactly the same as the joint test statistic derived by Baltagi and Li (1991) for
+# AR(l) residual disturbances and random individual effects." => matrix B calculated in pblsytest(),
+# adapt for use here
+#
+# see equivalently Baltagi (2005), Econometrics of Panel Data, 3rd edition, p. 97-98
+#
+# Baltagi (2005), p. 98:
+# "Since theWithin transformation wipes out the individual effects whether fixed or random,
+#  one can also use [LM5] to test for serial correlation in the random effects models."
+
+pbltest_lm5 <- function(x, ...) {
+  
+  if (plm:::describe(x, "model") == "pooling") stop("Test only for within effects (=fixed effects) or random effect models.")
+  
+##### following code adapted from pblsytest() #####
+  poolfe <- resid(x)
+  data <- model.frame(x)
+    ## extract indices
+  index <- attr(data, "index")
+  tindex <- index[[2]]
+  index <- index[[1]]
+    
+  ## till here. 
+  ## ordering here if needed.
+    
+  ## this needs ordering of obs. on time, regardless 
+  ## whether before that on groups or after
+    
+  ## and numerosity check
+    
+  ## order by group, then time
+  oo <- order(index,tindex)
+  ind <- index[oo]
+  tind <- tindex[oo]
+  poolfe <- poolfe[oo]
+  ## det. number of groups and df
+  n <- length(unique(index))
+  k <- ncol(model.matrix(x))
+  ## det. max. group numerosity
+  t <- max(pdim(x)$Tint$Ti)
+  ## det. total number of obs. (robust vs. unbalanced panels)
+  nT <- length(ind)
+    
+  ## calc. B (with FE residuals:
+  unind <- unique(ind)
+  uu <- rep(NA,length(unind))
+  uu1 <- rep(NA,length(unind))
+  for(i in 1:length(unind)) {
+    u.t <- poolfe[ind==unind[i]]
+    u.t.1 <- u.t[-length(u.t)]
+    u.t <- u.t[-1]
+    uu[i] <- crossprod(u.t)
+    uu1[i] <- crossprod(u.t,u.t.1)
+  }
+    
+  B <- sum(uu1)/sum(uu)
+##### END code adapted from pblsytest() #####
+
+  # p. 138. onesided. Under H0, this is asymptotically distributed (for large T) as N(0, 1).
+  LM5_statsitic <- sqrt((n * t^2) / (t-1)) * B
+  names(LM5_statsitic) <- "LM5"
+  
+  # not needed: p. 138: This LM statistic is asymptotically distributed (for large T) as chisquare(1) [under the null hypothesis]
+  # LM5_statistic_squared <- LM5_statsitic^2
+
+  dname <- paste(deparse(substitute(x$formula)))
+  RVAL <- list(statistic = LM5_statsitic,
+               parameter = NULL,
+               method = "LM test for first-order serial correlation in a fixed effects model \n
+                         LM5 in Baltagi/Li (1995), p. 138-139",
+               alternative = "AR(1) errors (rho > 0) sub fixed effects",
+               p.value = pnorm(LM5_statsitic,lower.tail=FALSE),
+               data.name = dname)
+  class(RVAL) <- "htest"
+  return(RVAL)
+} ## END: pbltest_lm5
+
+
+###### pbsystest.panelmodel: ##################
+##
+## fixed: Degrees of freedom in the joint test (test="j") of Baltagi/Li (1991). Should be chisquare(2) instead of chisquare(1),
+##        see Baltagi/Li (1991), p. 279 and again in Baltagi/Li (1995), p. 136
+##
+## added: Check to verify we are working with a pooled model in the panelmodel interface, as this is necessary for the test.
+##        (The formula interface has such check already, but it is missing for panelmodel interface. If a different model
+##         type is passed, the user gets no warning and the statistics are way off.)
+
+pbsytest.panelmodel <- function(x, test=c("ar","re","j"), ...){
+  
+  if (plm:::describe(x, "model") != "pooling") stop("pbsytest only relevant for pooling models") # added
+  
+  poolres <- resid(x)
+  data <- model.frame(x)
+  ## extract indices
+  index <- attr(data, "index")
+  tindex <- index[[2]]
+  index <- index[[1]]
+  
+  ## till here. 
+  ## ordering here if needed.
+  
+  ## this needs ordering of obs. on time, regardless 
+  ## whether before that on groups or after
+  
+  ## and numerosity check
+  
+  ## order by group, then time
+  oo <- order(index,tindex)
+  ind <- index[oo]
+  tind <- tindex[oo]
+  poolres <- poolres[oo]
+  ## det. number of groups and df
+  n <- length(unique(index))
+  k <- ncol(model.matrix(x))
+  ## det. max. group numerosity
+  t <- max(pdim(x)$Tint$Ti)
+  ## det. total number of obs. (robust vs. unbalanced panels)
+  nT <- length(ind)
+  
+  ## calc. A and B:
+  S1 <- sum( tapply(poolres,ind,sum)^2 )
+  S2 <- sum( poolres^2 )
+  
+  A <- S1/S2-1
+  
+  unind <- unique(ind)
+  uu <- rep(NA,length(unind))
+  uu1 <- rep(NA,length(unind))
+  for(i in 1:length(unind)) {
+    u.t <- poolres[ind==unind[i]]
+    u.t.1 <- u.t[-length(u.t)]
+    u.t <- u.t[-1]
+    uu[i] <- crossprod(u.t)
+    uu1[i] <- crossprod(u.t,u.t.1)
+  }
+  
+  B <- sum(uu1)/sum(uu)
+  
+  switch(match.arg(test),
+           ar ={LM <- (n * t^2 * (B - (A/t))^2) / ((t-1)*(1-(2/t)))
+           df <- c(df=1)
+           names(LM) <- "chisq"
+           pLM <- pchisq(LM,df=1,lower.tail=FALSE)
+           tname <- "Bera, Sosa-Escudero and Yoon locally robust test"
+           myH0 <- "AR(1) errors sub random effects"
+         },
+           re={LM <- (A - 2*B) * sqrt( (n * t) / (2*(t-1)*(1-(2/t))) )
+           names(LM) <- "z"
+           df <- NULL
+           pLM <- pnorm(LM,lower.tail=FALSE)
+           tname <- "Bera, Sosa-Escudero and Yoon locally robust test"
+           myH0 <- "random effects sub AR(1) errors"
+         },              
+           j={LM <- (n * t^2) / (2*(t-1)*(t-2)) * (A^2 - 4*A*B + 2*t*B^2) 
+           df <- c(df=2)
+           names(LM) <- "chisq"
+           pLM <- pchisq(LM,df=df,lower.tail=FALSE) # fixed df=df
+           tname <- "Baltagi and Li AR-RE joint test"
+           myH0 <- "AR(1) errors or random effects"
+         }
+  )
+  
+  dname <- paste(deparse(substitute(formula)))
+  RVAL <- list(statistic = LM,
+               parameter = df,
+               method = tname,
+               alternative = myH0,
+               p.value = pLM,
+               data.name =   dname)
+  class(RVAL) <- "htest"
+  return(RVAL)
+  
+} ###### END pbsystest.panelmodel: ##################
 
 
