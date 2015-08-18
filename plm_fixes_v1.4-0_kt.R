@@ -2,7 +2,12 @@
 # no warranty
 # License: GPL
 #
-# Version of this file 0.3-9
+# Version of this file 0.4-0
+#
+#
+# Please find this file also at https://github.com/helix123/plm_fixes
+# Updated documentation for plm (mainly new text book editions) is at https://github.com/helix123/plm/tree/master/man
+
 #
 # Instructions:
 # load this file after package plm is loaded
@@ -12,8 +17,9 @@
 #   - plmtest() [additionally Baltagi/Li (1990) is directly available by baltagi_li_re()]
 #   - pbgtest() allows to pass on type="F" to lmtest::bgtest(), thus offering the small sample test (F test)
 #   - pbltest(): added panelmodel interface
-#   - pbsytest(): fixed degrees of freedom error when test="j" (Baltagi/Li (1991))
+#   - pbsytest(): fixed degrees of freedom error when test="j" (Baltagi/Li (1991)); added warning if wrong input model
 #   - pbltest_lm5: new function added to compute test statistic LM5 from Baltagi/Li (1995)
+#   - lag.pseries() can handle negative lags (leading values); lead.pseries() is added for convenience
 
 
 #
@@ -38,7 +44,7 @@
 #        
 # see how STATA does it and this produces the same statistic: http://www.stata.com/manuals14/xtxtregpostestimation.pdf
 
-# Breusch-Godfrey test for autocorrelation: pbgtest() now passes on type="F" to lmtst:bgtest() for small sample test
+# Breusch-Godfrey test for autocorrelation: pbgtest() now passes on (if supplied) type="F" to lmtst:bgtest() for small sample test
 
 
 
@@ -311,7 +317,7 @@ baltagi_li_re <- function (x,
 
 
 ############## plmtest() ############################################
-## modified to handle unbalanced panels as in Baltagi/li (1990) ######
+## modified to handle unbalanced panels as in Baltagi/li (1990) #####
 
 plmtest <- function(x,...){
   UseMethod("plmtest")
@@ -448,7 +454,7 @@ pbgtest.panelmodel<-function(x, order = NULL, ...) {
   #if(!lm.ok) stop("package lmtest is needed but not available")
   
   ## bgtest is the bgtest, exception made for the method attribute
-  dots <- match.call(expand.dots=FALSE)[["..."]]
+  dots <- match.call(expand.dots=FALSE)[["..."]]      # fixed: added expand.dots=FALSE
   if (!is.null(dots$type)) type <- dots$type else type <- "Chisq"
   if (!is.null(dots$order.by)) order.by <- dots$order.by else order.by <- NULL
   
@@ -498,10 +504,11 @@ pbltest.panelmodel <- function(x, ...) {
 # AR(l) residual disturbances and random individual effects." => matrix B calculated in pblsytest(),
 # adapt for use here
 #
-# see equivalently Baltagi (2005), Econometrics of Panel Data, 3rd edition, p. 97-98
+# see equivalently Baltagi (2005), Econometric Analysis of Panel Data, 3rd edition, pp. 97-98 or
+#                  Baltagi (2013), Econometric Analysis of Panel Data, 5th edition, pp. 108-109
 #
-# Baltagi (2005), p. 98:
-# "Since theWithin transformation wipes out the individual effects whether fixed or random,
+# Baltagi (2005), p. 98 [=Baltagi (2013), p. 109]:
+# "Since the [w]ithin transformation wipes out the individual effects whether fixed or random,
 #  one can also use [LM5] to test for serial correlation in the random effects models."
 
 pbltest_lm5 <- function(x, ...) {
@@ -667,5 +674,72 @@ pbsytest.panelmodel <- function(x, test=c("ar","re","j"), ...){
   return(RVAL)
   
 } ###### END pbsystest.panelmodel: ##################
+
+############# lag.pseries: able to create negative lags (=leading values) (use k < 0)
+## for convenience: method lead.pseries is also added
+#
+# also as diff against plm_v1.4-0 on github: https://github.com/cran/plm/compare/cd00e7ce878f8ffa0e0bc53ab8692778cb8aaecc...1ef2620b2851ae6d7374d52bfed8141e11eaff76
+# 
+lag.pseries <- function(x, k = 1, ...) {
+  nx <- names(x)
+  index <- attr(x, "index")
+  id <- index[[1]]
+  time <- index[[2]]
+  
+  # catch the case when an index of pdata.frame shall be lagged
+  if (is.factor(x)) if (all(as.character(x) == as.character(id)) | all(as.character(x)==as.character(time))) stop("Lagged vector cannot be index.")
+  
+  alag <- function(x, ak){
+    if (round(ak) != ak) stop("Lagging value 'k' must be whole-numbered (positive, negative or zero)")
+    if (ak > 0){
+      # delete first ak observations for each unit
+      isNAtime <- c(rep(T,ak), diff(as.numeric(time), lag = ak)) != ak
+      isNAid <- c(rep(T,ak), diff(as.numeric(id), lag = ak)) != 0
+      isNA <- as.logical(isNAtime + isNAid)
+      if (is.factor(x)) levs <- levels(x)
+      result <- c(rep(NA, ak), x[1:(length(x)-ak)])
+      result[isNA] <- NA
+      if (is.factor(x)) result <- factor(result, labels = levs)
+      structure(result,
+                names = nx,
+                class = class(x),
+                index = index)
+    } else if (ak < 0) { # => compute leading values
+      
+      # delete last ak observations for each unit
+      isNAtime <- c(as.numeric(time) - c(tail(as.numeric(time), length(time) + ak), rep(T, -ak))) != ak
+      isNAid   <- c(as.numeric(id) - c(tail(as.numeric(id), length(id) + ak) , rep(T, -ak))) != 0
+      isNA <- as.logical(isNAtime + isNAid)
+      result <- c(x[(1-ak):(length(x))], rep(NA, -ak))
+      result[isNA] <- NA
+      if (is.factor(x)) levs <- levels(x)
+      if (is.factor(x)) result <- factor(result, labels = levs)
+      structure(result,
+                names = nx,
+                class = class(x),
+                index = index)
+      
+    } else return(x) # ak == 0 => nothing to do (no lagging/no leading)
+  }
+  
+  if (length(k) > 1){
+    rval <- sapply(k, function(i) alag(x, i))
+    colnames(rval) <- k
+  }
+  else {
+    rval <- alag(x, k)
+  }
+  return(rval)
+}
+
+lead <- function (x, k = 1, ...) {
+  UseMethod("lead")
+}
+
+lead.pseries <- function(x, k = 1, ...) {
+  ret <- lag.pseries(x, k = -k)
+  if (length(k) > 1) colnames(ret) <- k
+  return(ret)
+}
 
 
