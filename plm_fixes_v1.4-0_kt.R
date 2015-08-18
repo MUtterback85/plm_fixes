@@ -2,7 +2,7 @@
 # no warranty
 # License: GPL
 #
-# Version of this file 0.4-0
+# Version of this file 0.4-1
 #
 #
 # Please find this file also at https://github.com/helix123/plm_fixes
@@ -18,7 +18,8 @@
 #   - pbgtest() allows to pass on type="F" to lmtest::bgtest(), thus offering the small sample test (F test)
 #   - pbltest(): added panelmodel interface
 #   - pbsytest(): fixed degrees of freedom error when test="j" (Baltagi/Li (1991)); added warning if wrong input model
-#   - pbltest_lm5: new function added to compute test statistic LM5 from Baltagi/Li (1995)
+#   - pbltest_lm5(): new function added to compute test statistic LM5 from Baltagi/Li (1995)
+#   - pbltest.panelmodel(): panelmodel interface added for convenience
 #   - lag.pseries() can handle negative lags (leading values); lead.pseries() is added for convenience
 
 
@@ -673,7 +674,7 @@ pbsytest.panelmodel <- function(x, test=c("ar","re","j"), ...){
   class(RVAL) <- "htest"
   return(RVAL)
   
-} ###### END pbsystest.panelmodel: ##################
+} ###### END pbsytest.panelmodel: ##################
 
 ############# lag.pseries: able to create negative lags (=leading values) (use k < 0)
 ## for convenience: method lead.pseries is also added
