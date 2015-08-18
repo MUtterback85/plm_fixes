@@ -33,7 +33,7 @@ also added check for correct input
 ##### Baltagi/Li (1995): implemented statistic and test for LM5
 LM test for first-order serial correlation in a fixed effects model
 
-##### Updated Updated documentation
+##### Updated documentation
 For some updates to plm's documentation (mainly new text book editions) see https://github.com/helix123/plm/tree/master/man
 
 
