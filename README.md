@@ -48,6 +48,7 @@ lead.pseries() is also added for convenience
    - pbgtest.panelmodel() 
    - pbltest(): added panelmodel interface
    - pbsytest(): fixed degrees of freedom error when test="j" (Baltagi/Li (1991))
-   - pbltest_lm5: new function added to compute test statistic LM5 from Baltagi/Li (1995)
+   - pbltest.panelmodel(): panelmodel interface added for convenience
+   - pbltest_lm5(): new function added to compute test statistic LM5 from Baltagi/Li (1995)
    - lag.pseries() can handle negative lags (leading values); lead.pseries() is added for convenience
 
