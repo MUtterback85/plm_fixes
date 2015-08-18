@@ -36,6 +36,8 @@ LM test for first-order serial correlation in a fixed effects model
 ##### Updated documentation
 For some updates to plm's documentation (mainly new text book editions) see https://github.com/helix123/plm/tree/master/man
 
+##### lag.pseries() can handle negative lags (leading values)
+lead.pseries() is also added for convenience
 
 ## How to use
  
@@ -47,4 +49,5 @@ For some updates to plm's documentation (mainly new text book editions) see http
    - pbltest(): added panelmodel interface
    - pbsytest(): fixed degrees of freedom error when test="j" (Baltagi/Li (1991))
    - pbltest_lm5: new function added to compute test statistic LM5 from Baltagi/Li (1995)
+   - lag.pseries() can handle negative lags (leading values); lead.pseries() is added for convenience
 
