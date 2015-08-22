@@ -2,7 +2,7 @@
 # no warranty
 # License: GPL
 #
-# Version of this file 0.4-2
+# Version of this file 0.4-3
 #
 #
 # Please find this file also at https://github.com/helix123/plm_fixes
@@ -14,12 +14,12 @@
 # The following functions are then masked:
 #   - pdwtest.panelmodel() and pdwtest.formula (used by pdwtest())
 #   - summary.plm() and print.summary.plm() (used by summary())
-#   - plmtest() [additionally Baltagi/Li (1990) is directly available by baltagi_li_re()]
+#   - plmtest() stops and prints a warning if used with unbalanced panel dataset
+#   - baltagi_li_1990_random(): Test for individual and time effects for unbalanced panels impemented [Baltagi/Li (1990)]
 #   - pbgtest() allows to pass on type="F" to lmtest::bgtest(), thus offering the small sample test (F test)
 #   - pbltest(): added panelmodel interface
-#   - pbsytest(): fixed degrees of freedom error when test="j" (Baltagi/Li (1991)); added warning if wrong input model
+#   - pbsytest(): fixed degrees of freedom error when test="j" (test of Baltagi/Li (1991)); added warning if wrong input model
 #   - pbltest_lm5(): new function added to compute test statistic LM5 from Baltagi/Li (1995)
-#   - pbltest.panelmodel(): panelmodel interface added for convenience
 #   - lag.pseries() can handle negative lags (leading values); lead.pseries() is added for convenience
 
 
@@ -266,18 +266,21 @@ print.summary.plm <- function(x,digits= max(3, getOption("digits") - 2),
 
 
 ################  Breusch-Pagan test for random effects model for unbalanced data ################  
-################  run instead of original plmtest() - but see below for a wrapper version of plmtest()
-# Breusch-Pagan test for random effects model for unbalanced data 
+# Implemented:
 # Baltagi/Li (1990), A lagrange multiplier test for the error components model with incomplete panels,
 #                    Econometric Reviews, 9:1, 103-107, DOI: 10.1080/07474939008800180
 #
-# for individual effects
-baltagi_li_re <- function (x,
+# For unbalanced variants of Honda test and King/Wu see
+# Baltagi (2013), Econometric Analysis of Panel Data, 5th edition, pp. 200-203.
+#
+# => for twoway model and oneway
+
+baltagi_li_1990_random <- function (x,
                         effect = c("individual", "time", "twoways"),
-                        type = c("honda", "bp", "ghm","kw"),
+                        type = c("bp"),
                         ...) {
   
-  ### this is from original plmtest()
+### this is from original plmtest()
   effect <- match.arg(effect)
   type <- match.arg(type)
   if (plm:::describe(x, "model") != "pooling") x <- update(x, model = "pooling")
@@ -289,36 +292,78 @@ baltagi_li_re <- function (x,
   id <- index[[1]]
   time <- index[[2]]
   res <- resid(x)
-  ### END this is from original plmtst() ###
+### END this is from original plmtest() ###
   
-  # Implementation for unbalanced panels
-  if (effect != "individual") {stop("Not implemented. Only individual effects are implemented.")}  
-
+### calc of parts of the two test statistic ##
   T_i <- as.numeric(table(id))
-  T_mean <- mean(T_i)
+  N_t <- as.numeric(table(time))
+  N_obs <- pdim$nT$N
   
-  A1 <-  1 - sum(tapply(res,id,sum)^2)/sum(res^2)
-  term <- sum(T_i^2) - (n * T_mean)
-  bp_stat_baltagi_li_re <- (((n * T_mean)^2) / 2) * ( A1^2 / term)
+  # see hints for calc. w/o using matrix calculation in Baltagi/Li (1990), p. 106
+  A1 <-  1 - sum(tapply(res,id,sum)^2)/sum(res^2) 
+  A2 <-  1 - sum(tapply(res,time,sum)^2)/sum(res^2)
   
-  parameter <- 1
-  names(parameter) <- "df"
+  M11 <- sum(T_i^2)
+  M22 <- sum(N_t^2)
+  
+  A1_div <- M11 - N_obs
+  A2_div <- M22 - N_obs
+  
+  bp_stat_baltagi_li_1990_random_id   <- (((N_obs)^2) / 2) * ( A1^2 / A1_div)
+  bp_stat_baltagi_li_1990_random_time <- (((N_obs)^2) / 2) * ( A2^2 / A2_div)
+  
+  LM1 <- N_obs * (1/sqrt(2*M11 - N_obs)) * A1
+  LM2 <- N_obs * (1/sqrt(2*M22 - N_obs)) * A2
+### END calc of parts of the two test statistic ##
+  
+  if (!type %in% c("bp"))
+    stop("type must be bp")
+  
+  
+  if (effect != "twoways"){
 
-  res <- list(statistic = c(chisq  = bp_stat_baltagi_li_re),
-              p.value = pchisq(bp_stat_baltagi_li_re, df = 1, lower.tail = FALSE),
+    if(effect == "individual") { stat <- bp_stat_baltagi_li_1990_random_id }
+    else {stat <- bp_stat_baltagi_li_1990_random_time}
+    parameter <- 1
+
+  } else { # twoways model
+    stat <- bp_stat_baltagi_li_1990_random_id + bp_stat_baltagi_li_1990_random_time
+    parameter <- 2 # twoway model
+  }
+
+  method.effect <- switch(effect,
+                          id      = "individual effects",
+                          time    = "time effects",
+                          twoways = "two-ways effects")  
+
+  method <- paste("Lagrange Multiplier Test - ",method.effect,
+                  " (Breusch-Pagan modified by Baltagi/Li (1990) for unbalanced panels)\n",sep="")
+
+  names(parameter) <- "df"
+  names(stat) <- "chisq"
+  pval <- pchisq(stat, df = parameter, lower.tail = FALSE)
+
+  names(parameter) <- "df"
+  res <- list(statistic = stat,
+              p.value   = pval,
+              method    = method,
               parameter = parameter,
-              method = "Lagrange Multiplier Test - individual effects - Breusch-Pagan Test for unbalanced Panels as in Baltagi/Li (1990)",
               data.name = plm:::data.name(x),
-              alternative = "significant effects")
+              alternative <- "significant effects")
+
   class(res) <- "htest"
   return(res)
-} # END baltagi_li_re
+} # END baltagi_li_1990_random
+
+
+
+
 
 
 
 
 ############## plmtest() ############################################
-## modified to handle unbalanced panels as in Baltagi/li (1990) #####
+# modified to handle unbalanced panels as in Baltagi/li (1990) #####
 
 plmtest <- function(x,...){
   UseMethod("plmtest")
@@ -343,9 +388,9 @@ plmtest.plm <- function(x,
   
   
   if (balanced == F) { # for unbalanced panels, we need Baltagi/Li (1990)
-    
-    # Implementation for unbalanced panels
-    return(baltagi_li_re(x))
+
+    stop("Implementation not suited for unbalanced panels. Use baltagi_li_random() instead.")
+
     
   } else { ### balanced panel => use original implementation of plm [I copied it in here]
     
@@ -354,11 +399,16 @@ plmtest.plm <- function(x,
         stop("type must be one of honda or bp for a one way model")
       if(effect == "individual"){ condvar <- id ; card.cond <- n ; card.other <- T}
       else{condvar <- time ; card.cond <- T ; card.other <- n}
+      
+      
       stat <-  sqrt(card.other*card.cond/(2*(card.other-1)))*
         (crossprod(tapply(res,condvar,mean))*card.other^2/sum(res^2)-1)
+      
+      
       stat <- switch(type,
                      honda = c(normal = stat),
                      bp    = c(chisq  = stat^2))
+      
       parameter <- switch(type,
                           honda = NULL,
                           bp = 1)
@@ -367,13 +417,16 @@ plmtest.plm <- function(x,
                      bp    = pchisq(stat, df = 1, lower.tail = FALSE))
     }
     else{
-      stat1 <-  sqrt(n*T/(2*(T-1)))*(crossprod(tapply(res,id,mean))*T^2/sum(res^2)-1)
-      stat2 <-  sqrt(n*T/(2*(n-1)))*(crossprod(tapply(res,time,mean))*n^2/sum(res^2)-1)
+      stat1 <-  sqrt(n*T/(2*(T-1)))*(crossprod(tapply(res,id,mean))*T^2/sum(res^2)-1)      # KT: hier austauschen, dann ist alles gut
+      stat2 <-  sqrt(n*T/(2*(n-1)))*(crossprod(tapply(res,time,mean))*n^2/sum(res^2)-1)    # 
       stat <- switch(type,
                      ghm   = c(chisq = max(0,stat1)^2+max(0,stat2)^2),
                      bp    = c(chisq = stat1^2+stat2^2),
                      honda = c(normal = (stat1+stat2)/sqrt(2)),
                      kw    = c(normal = sqrt((T-1)/(n+T-2))*stat1+sqrt((n-1)/(n+T-2))*stat2))
+      
+      # baltagi_li_re(x)
+      
       parameter <- 2
       pval <- switch(type,
                      ghm   = pchisq(stat,df=2,lower.tail=FALSE),
