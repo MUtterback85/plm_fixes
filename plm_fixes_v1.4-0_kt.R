@@ -1,13 +1,16 @@
 # Own quick'n'dirty fixes (?)/enhancements to plm version 1.4-0
+# See original Package: https://cran.r-project.org/web/packages/plm/index.html
+# This file, some functions are copied over from the original package and are modified.
+# Some functions are new.
+#
 # no warranty
 # License: GPL
 #
-# Version of this file 0.5-0
+# Version of this file 0.5-2
 #
+# Find this file also at https://github.com/helix123/plm_fixes
+# Updated documentation for plm (mainly new text book editions and documentation for enhancements) is at https://github.com/helix123/plm/tree/master/man
 #
-# Please find this file also at https://github.com/helix123/plm_fixes
-# Updated documentation for plm (mainly new text book editions) is at https://github.com/helix123/plm/tree/master/man
-
 #
 # Instructions:
 # load this file after package plm is loaded. Modified functions are then masked.
@@ -322,6 +325,7 @@ plmtest.plm <- function(x,
   
   
   if (effect != "twoways"){
+    # oneway
     if (!type %in% c("honda", "bp", "kw"))
       stop("type must be one of honda, bp or kw for a one way model") # kw one-sided coincides with honda
     
@@ -335,11 +339,11 @@ plmtest.plm <- function(x,
                         bp = 1,
                         kw = NULL)
     pval <- switch(type,
-                   honda = pnorm(abs(stat), lower.tail = FALSE)*2, # honda is one-sided
+                   honda = pnorm(stat, lower.tail = FALSE), # honda oneway ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
                    bp    = pchisq(stat, df = 1, lower.tail = FALSE),
-                   kw    = pnorm(abs(stat), lower.tail = FALSE)*2) # kw is one-sided
+                   kw    = pnorm(stat, lower.tail = FALSE)) # kw ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
   }
-  else{
+  else { # twoways
     stat <- switch(type,
                    ghm   = c(chisq = max(0,LM1)^2+max(0,LM2)^2),
                    bp    = c(chisq = LM1^2+LM2^2),
@@ -347,10 +351,10 @@ plmtest.plm <- function(x,
                    kw    = c(normal = (sqrt(M11-N_obs)/sqrt(M11+M22-2*N_obs))*LM1+(sqrt(M22-N_obs)/sqrt(M11+M22-2*N_obs))*LM2))
     parameter <- 2
     pval <- switch(type,
-                   ghm   = pchisq(stat,df=parameter,lower.tail=FALSE), # should be: mixed chisq distribution: 1/4 * chisq(0) + 1/2 * chisq(1) + 1/4 * chisq(2)
-                   honda = pnorm(abs(stat),lower.tail=FALSE)*2, # honda is one-sided
+                   ghm   = pchisq(stat,df=parameter,lower.tail=FALSE), # should be: mixed chisq distribution: 1/4 * chisq(0) + 1/2 * chisq(1) + 1/4 * chisq(2) (Baltagi (2013), p. 72/202-203)
+                   honda = pnorm(stat,lower.tail=FALSE), # honda twoways ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
                    bp    = pchisq(stat,df=parameter,lower.tail=FALSE),
-                   kw    = pnorm(abs(stat),lower.tail=FALSE)*2) # kw is one-sided
+                   kw    = pnorm(stat,lower.tail=FALSE)) # kw twoways ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
   }
   
   method.type <- switch(type,
@@ -473,7 +477,7 @@ pbltest.panelmodel <- function(x, ...) {
 # subsitute the residuals for the FE residuals.
 
 # p. 136: "LM1, is exactly the same as the joint test statistic derived by Baltagi and Li (1991) for
-# AR(l) residual disturbances and random individual effects." => matrix B calculated in pblsytest(),
+# AR(1) residual disturbances and random individual effects." => matrix B calculated in pblsytest(),
 # adapt for use here
 #
 # see equivalently Baltagi (2005), Econometric Analysis of Panel Data, 3rd edition, pp. 97-98 or
@@ -621,8 +625,8 @@ pbsytest.panelmodel <- function(x, test=c("ar","re","j"), ...){
            pLM <- pchisq(LM,df=df,lower.tail=FALSE)
            tname <- "Bera, Sosa-Escudero and Yoon locally robust test"
            myH0 <- "random effects sub AR(1) errors"
-         },              
-           j={LM <- (n * t^2) / (2*(t-1)*(t-2)) * (A^2 - 4*A*B + 2*t*B^2) 
+         },
+           j={LM <- (n * t^2) / (2*(t-1)*(t-2)) * (A^2 - 4*A*B + 2*t*B^2)
            df <- c(df=2)
            names(LM) <- "chisq"
            pLM <- pchisq(LM,df=df,lower.tail=FALSE) # fixed: df=df
