@@ -143,5 +143,4 @@ pbsytest_mod_unbalanced.panelmodel <- function(x, test = c("ar","re","j"), norma
   
   class(RVAL) <- "htest"
   return(RVAL)
-  
 } ###### END pbsytest_mod_unbalanced.panelmodel: ##################

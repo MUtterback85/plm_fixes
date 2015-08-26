@@ -1,10 +1,17 @@
 # Test of new plmtest implementation (handeling unbalanced panels)
 #
-# compare to Baltagi (2013), Econometric Analysis of Panel Data, 5th ed., p. 74/75 (Table 4.1/4.2)
+# compare to grunfeld data example in Baltagi (2013), Econometric Analysis of Panel Data, 5th ed., p. 74/75 (Table 4.1/4.2)
+# => statistics and p-values match => implementaiton is ok.
+#
+# unbalanced formulas reduce in the case of a balanced panel to the formula for balanced panels:
+# compare for a balanced and an unbalanced panel: current implementation in v1.4-0 vs. new implementation
+#    balanced panel: => test output stays the same => implementation is ok.
+#  unbalanced panel: => output of new implementation differs from output of old implementation => as expected => implementation is ok.
 
-
+# Tables reprinted here:
+#
 # Table 4.1
-############ [(critical values at %5 level)]
+############ [statistic (critical values at 5% level)]
 # BP 798.162   6.454  804.615
 #   (3.841)   (3.841) (5.991)
 #
@@ -14,15 +21,15 @@
 # KW 28.252    -2.540   21.832
 #   (1.645)   (1.645)   (1.645)
 #
-# SLM 32.661   -2.433      - 
+# SLM 32.661   -2.433     -    ## note: SLM statistic is not implemented in plm
 #   (1.645)   (1.645)     -
 #
 # GHM   -       -     798.162 
 #       -       -     (4.231)
 
 
-# Table 4.2 [EViews]
-########### [(p-values)]
+# Table 4.2 [Output from EViews]
+########### [statistic (p-values)]
 # BP 798.162   6.454  804.615
 #   (0.000)   (0.0111) (0.0000)
 #
@@ -32,7 +39,7 @@
 # KW 28.252    -2.540    21.832
 #   (0.000)   (0.9945)   (0.0000)
 #
-# SLM 32.661   -2.433      - 
+# SLM 32.661   -2.433     -   ## note: SLM statistic is not implemented in plm
 #   (0.000)   (0.9925)    -
 #
 # GHM   -       -     798.162 
@@ -66,10 +73,10 @@ bp_orig               <- plm:::plmtest.plm(pool_grunfeld, type="bp")
 bp_orig_unbalanced    <- plm:::plmtest.plm(pool_grunfeld_unbalanced, type="bp")
 
 # time
-honda_orig            <- plm:::plmtest.plm(pool_grunfeld, type="honda", effect="time")
-honda_orig_unbalanced <- plm:::plmtest.plm(pool_grunfeld_unbalanced, type="honda", effect="time")
-bp_orig               <- plm:::plmtest.plm(pool_grunfeld, type="bp", effect="time")
-bp_orig_unbalanced    <- plm:::plmtest.plm(pool_grunfeld_unbalanced, type="bp", effect="time")
+honda_orig_time            <- plm:::plmtest.plm(pool_grunfeld, type="honda", effect="time")
+honda_orig_time_unbalanced <- plm:::plmtest.plm(pool_grunfeld_unbalanced, type="honda", effect="time")
+bp_orig_time               <- plm:::plmtest.plm(pool_grunfeld, type="bp", effect="time")
+bp_orig_time_unbalanced    <- plm:::plmtest.plm(pool_grunfeld_unbalanced, type="bp", effect="time")
 
 
 # twoways
@@ -84,6 +91,7 @@ ghm_orig_unbalanced_tw   <- plm:::plmtest.plm(pool_grunfeld_unbalanced, type="gh
 
 #################### load modified version first (eg. source(plm_fixes_v1.4-0_kt.R)) ############
 ### generalized Version to handle also unbalanced panels
+
 # individual
 honda_mod            <- plmtest(pool_grunfeld, type="honda")
 honda_mod_unbalanced <- plmtest(pool_grunfeld_unbalanced, type="honda")
@@ -97,6 +105,7 @@ honda_mod_time_unbalanced <- plmtest(pool_grunfeld_unbalanced, type="honda", eff
 bp_mod_time               <- plmtest(pool_grunfeld, type="bp", effect="time")
 bp_mod_time_unbalanced    <- plmtest(pool_grunfeld_unbalanced, type="bp", effect="time")
 kw_mod_time               <- plmtest(pool_grunfeld, type="kw", effect="time")
+
 # twoways
 honda_mod_tw            <- plmtest(pool_grunfeld, type="honda", effect="twoways")
 honda_mod_unbalanced_tw <- plmtest(pool_grunfeld_unbalanced, type="honda", effect="twoways")
@@ -125,14 +134,15 @@ pnorm(abs(1.645), lower.tail = FALSE)*2
 qchisq(alpha, df=1, lower.tail = F) # H0_a, H0_b
 qchisq(alpha, df=2, lower.tail = F) # H0_c
 
-#### ghm
-# Baltagi (2013), p. 88 (note 2), p. 209 (note 10);  4.321 is a typo, should be 4.213
+#### ghm    test for p-value of mixed chi-square distribution (more often called chi-bar-sqaure)
+# Baltagi (2013), p. 88 (note 2), p. 209 (note 10) gives critical values for 0.01, 0.05, 0.10 levels
+# 4.321 is a typo in Baltagi's textbook, should be 4.213
 crit <- c(7.289, 4.321, 2.952)
-p.val <- (1/4)*pchisq(crit, df=0, lower.tail = F) + (1/2) * pchisq(crit, df=1, lower.tail = F) + (1/4) * pchisq(crit, df=2, lower.tail = F)
+p.vals <- (1/4)*pchisq(crit, df=0, lower.tail = F) + (1/2) * pchisq(crit, df=1, lower.tail = F) + (1/4) * pchisq(crit, df=2, lower.tail = F)
 
 # 4.321 ->  4.213
 crit_corr <- c(7.289, 4.213, 2.952)
-p.val_corr <- (1/4)*pchisq(crit_corr, df=0, lower.tail = F) + (1/2) * pchisq(crit_corr, df=1, lower.tail = F) + (1/4) * pchisq(crit_corr, df=2, lower.tail = F)
+p.vals_corr <- (1/4)*pchisq(crit_corr, df=0, lower.tail = F) + (1/2) * pchisq(crit_corr, df=1, lower.tail = F) + (1/4) * pchisq(crit_corr, df=2, lower.tail = F)
 
 # Baltagi (2013), p 73, 74
 crit <- c(2.706) # for alpha=0.05
@@ -141,35 +151,32 @@ p.val <- (1/2)*pchisq(crit, df=0, lower.tail = F) + (1/2) * pchisq(crit, df=1, l
 
 
 
+#### test of old (v1.4-0) vs. new implementation:
 
-# Tests - balanced - should be TRUE
+# Tests - balanced - should give the same statistic, thus the results should be TRUE
   # individual
-  abs(honda_mod$statistic) - honda_orig$statistic < 0.00000000001
-  abs(bp_mod$statistic)    - bp_orig$statistic    < 0.00000000001
+  abs(honda_mod$statistic - honda_orig$statistic) < 0.00000000001
+  abs(bp_mod$statistic    - bp_orig$statistic)    < 0.00000000001
+  
+  # time
+  abs(honda_mod_time$statistic - honda_orig_time$statistic) < 0.00000000001
+  abs(bp_mod_time$statistic    - bp_orig_time$statistic)    < 0.00000000001
   
   # twoways
-  abs(kw_mod_tw$statistic)  - kw_orig_tw$statistic    < 0.00000000001
-  abs(ghm_mod_tw$statistic) - ghm_orig_tw$statistic   < 0.00000000001
+  abs(kw_mod_tw$statistic  - kw_orig_tw$statistic)    < 0.00000000001
+  abs(ghm_mod_tw$statistic - ghm_orig_tw$statistic)   < 0.00000000001
 
-
-# Tests - unbalanced - should be FALSE
+# Tests - unbalanced - statistics should be sufficiently different, thus results should be TRUE
   # individual
-  abs(abs(honda_mod_unbalanced$statistic) - honda_orig_unbalanced$statistic) < 0.001
-  abs(abs(bp_mod_unbalanced$statistic)    - bp_orig_unbalanced$statistic) < 0.001
+  abs(honda_mod_unbalanced$statistic - honda_orig_unbalanced$statistic) > 0.0001
+  abs(bp_mod_unbalanced$statistic    - bp_orig_unbalanced$statistic)    > 0.0001
+  
+  # time
+  abs(honda_mod_time_unbalanced$statistic - honda_orig_time_unbalanced$statistic) > 0.0001
+  abs(bp_mod_time_unbalanced$statistic    - bp_orig_time_unbalanced$statistic)    > 0.0001
   
   # twoways
-  abs(abs(kw_mod_unbalanced_tw$statistic)  - kw_orig_unbalanced_tw$statistic)    < 0.001
-  abs(abs(ghm_mod_unbalanced_tw$statistic) - ghm_orig_unbalanced_tw$statistic)   < 0.001
-  
-  
-  
-
-  
-  
-  
-  
-  
-  
-  
+  abs(kw_mod_unbalanced_tw$statistic  - kw_orig_unbalanced_tw$statistic)    > 0.0001
+  abs(ghm_mod_unbalanced_tw$statistic - ghm_orig_unbalanced_tw$statistic)   > 0.0001
 
 

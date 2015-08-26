@@ -20,9 +20,11 @@ require(plm)
 data("Grunfeld")
 Grunfeldpdata <- pdata.frame(Grunfeld, index = c("firm", "year"), drop.index = FALSE, row.names = TRUE)
 pool_grunfeld  <- plm(inv ~ value + capital, data=Grunfeldpdata, model="pooling")
-pbsytest(pool_grunfeld, test = "ar") # chisq = 10.31                   => LM*_p in Baltagi's book
-pbsytest(pool_grunfeld, test = "re") # z = 25.787 [25.787^2=664.9694]  => sqrt(LM*_mu) in Baltagi's book
-pbsytest(pool_grunfeld, test = "j")  # chisq = 808.47                  => LM1 statistic in Baltagi's book
+
+# original implementation (v1.4-0)
+plm:::pbsytest.panelmodel(pool_grunfeld, test = "ar") # chisq = 10.31                   => LM*_p in Baltagi's book
+plm:::pbsytest.panelmodel(pool_grunfeld, test = "re") # z = 25.787 [25.787^2=664.9694]  => sqrt(LM*_mu) in Baltagi's book
+plm:::pbsytest.panelmodel(pool_grunfeld, test = "j")  # chisq = 808.47                  => LM1 statistic in Baltagi's book
 
 ### results from Bera et al. (2001), p. 13:
 # To replicate, a special version of the Grunfeld data set is needed: only 5 selected firms (total of 100 obs)
@@ -41,18 +43,22 @@ plmtest(pool_grunfeld_half, type = "bp")                   # chisq = 453.82 => R
 
 ############### unbalanced version ###################
 
+################ load new implemtation first, for this test:
+################ need to provide it under the name pbsytest_mod_unbalanced.panelmodel
+################ if already loaded under the real name, use e. g. the follwing for convenience:
+#     pbsytest_mod_unbalanced.panelmodel <- pbsytest.panelmodel 
+
 # results for balanced data set grunfeld
 pbsytest_mod_unbalanced.panelmodel(pool_grunfeld, test = "ar")
 pbsytest_mod_unbalanced.panelmodel(pool_grunfeld, test = "re")
 pbsytest_mod_unbalanced.panelmodel(pool_grunfeld, test = "j")
 
-# parts of the grunfeld data (for tests as in era et al. (2001), p. 13)
-pbsytest_mod_unbalanced.panelmodel(pool_grunfeld_half, test = "ar") # chisq = 3.7125 => RS*_p
-pbsytest_mod_unbalanced.panelmodel(pool_grunfeld_half, test = "re") # chisq = 384.18 => RS*_u
-pbsytest_mod_unbalanced.panelmodel(pool_grunfeld_half, test = "j")  # chisq = 457.53 => RS_up
+# parts of the grunfeld data (for tests as in Bera et al. (2001), p. 13)
+pbsytest_mod_unbalanced.panelmodel(pool_grunfeld_half, test = "ar") # chisq = 3.7125; p = 0.054 => RS*_p
+pbsytest_mod_unbalanced.panelmodel(pool_grunfeld_half, test = "re") # chisq = 384.18; p = 0     => RS*_u
+pbsytest_mod_unbalanced.panelmodel(pool_grunfeld_half, test = "j")  # chisq = 457.53; p = 0     => RS_up
 
-
-pbsytest_mod_unbalanced.panelmodel(pool_grunfeld_half, test = "re", normal = T) # normal = 19.601 => RSO*_u (tiny diff due to rounding) in Bera et al. (2001), p. 13
+pbsytest_mod_unbalanced.panelmodel(pool_grunfeld_half, test = "re", normal = T) # normal = 19.601; p = 0 => RSO*_u (tiny diff due to rounding) in Bera et al. (2001), p. 13
 
 # should result in an error
 pbsytest_mod_unbalanced.panelmodel(pool_grunfeld_half, test = "j",  normal = T)
@@ -70,9 +76,8 @@ pginipanel5 <- pdata.frame(ginipanel5, index = c("naglo", "ano"), drop.index = F
 # STATA command for RE model: xtreg gini ie ie2 indus adpubedsal desempleo tactiv invipib apertura pyas4 e64 supc tamfam, re
 # use pooling model in R:
 pool_gini <- plm(gini ~ ie + ie2 + indus + adpubedsal + desempleo + tactiv + invipib + apertura + pyas4 + e64 + supc + tamfam, data=pginipanel5, model="pooling")
-summary(pool_gini)
 
-# STATA Output (Sosa-Escudero/Bera (2008), p. 77):
+# STATA's Output of xttest1, unadjusted (Sosa-Escudero/Bera (2008), p. 77):
 #
 # Random Effects, Two Sided:
 #   LM(Var(u)=0) = 13.50 Pr>chi2(1) = 0.0002
@@ -92,7 +97,11 @@ summary(pool_gini)
 pbsytest_mod_unbalanced.panelmodel(pool_gini, test = "ar")
 pbsytest_mod_unbalanced.panelmodel(pool_gini, test = "re")
 pbsytest_mod_unbalanced.panelmodel(pool_gini, test = "j")
-
-# same
 pbsytest_mod_unbalanced.panelmodel(pool_gini, test = "re", normal = T)
-plm:::pbsytest.panelmodel(pool_gini, test = "re") # original version 1.4-0, test="re" already normalized
+
+# compare old implementation vs. new implementation (unbalanced) should result in a sufficently large difference [TRUE]
+stat_re_normal            <- plm:::pbsytest.panelmodel(pool_gini, test = "re") # original version 1.4-0, test="re" already normalized
+stat_re_normal_unbalanced <- pbsytest_mod_unbalanced.panelmodel(pool_gini, test = "re", normal = T)
+abs(stat_re_normal$statistic - stat_re_normal_unbalanced$statistic) > 0.01
+
+
