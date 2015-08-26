@@ -2,7 +2,9 @@
 see https://cran.r-project.org/package=plm
 
 Some code is new by me, some is adapted or just slightly modified from the above indicated source
+
 License: GPL
+
 no warranty
 
 
