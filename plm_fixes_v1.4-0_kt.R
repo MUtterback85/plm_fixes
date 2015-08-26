@@ -1,19 +1,23 @@
-# Own quick'n'dirty fixes (?)/enhancements to plm version 1.4-0
-# See original Package: https://cran.r-project.org/web/packages/plm/index.html
-# This file, some functions are copied over from the original package and are modified.
+# Own quick'n'dirty fixes (?)/enhancements to plm version 1.4-0 as on CRAN
+# See original Package: https://cran.r-project.org/package=plm
+# In this file, some functions are copied over from the original package and are modified.
 # Some functions are new.
 #
+# Version of this file 0.6-1
+# 
 # no warranty
-# License: GPL
 #
-# Version of this file 0.6-0
+# License: GPL v2, v3
+#          http://www.gnu.org/licenses/gpl-2.0.html
+#          http://www.gnu.org/licenses/gpl-3.0.html
+#
 #
 # Find this file also at https://github.com/helix123/plm_fixes
 # Updated documentation for plm (mainly new text book editions and documentation for enhancements) is at https://github.com/helix123/plm/tree/master/man
 #
 #
 # Instructions:
-# load this file after package plm is loaded. Modified functions are then masked.
+# Load this file after package plm is loaded. Modified functions are then masked.
 #
 #   - pdwtest.panelmodel() and pdwtest.formula (used by pdwtest()): Durbin-Watson test respecting panel structure,
 #                see http://stackoverflow.com/questions/31894055/pdwtest-from-plm-with-wrong-p-value-for-pooled-ols-durbin-watson-test-for-autoc]
@@ -46,9 +50,10 @@
 #   - pbltest(): added panelmodel interface is added for convenience
 
 
-#### load package plm first ###
+#### load package plm first ########
+####   must be v1.4-0 from CRAN ####
 require(plm)
-
+if (packageVersion("plm") != "1.4.0") stop("This fixes/enhancements are against plm v. 1.4-0 from CRAN (published 2013-12-28)")
 
 ################## pdwtest.panelmodel() adapted from pseries.R [Durbin-Watson test] ##################
 pdwtest.panelmodel <- function(x,...) {
