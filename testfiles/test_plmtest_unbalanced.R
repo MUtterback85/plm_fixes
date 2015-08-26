@@ -65,7 +65,7 @@ pool_grunfeld_unbalanced <- plm(inv ~ value + capital, data=Grunfeldpdata_unbala
 
 
 
-########## call original plmtest.plm() to get the test from original v1.4-0 ####
+########## call original plmtest.plm() to get the test from original v1.4-0 as on CRAN ####
 # individual
 honda_orig            <- plm:::plmtest.plm(pool_grunfeld, type="honda")
 honda_orig_unbalanced <- plm:::plmtest.plm(pool_grunfeld_unbalanced, type="honda")
@@ -89,7 +89,7 @@ kw_orig_unbalanced_tw    <- plm:::plmtest.plm(pool_grunfeld_unbalanced, type="kw
 ghm_orig_tw              <- plm:::plmtest.plm(pool_grunfeld, type="ghm", effect="twoways")
 ghm_orig_unbalanced_tw   <- plm:::plmtest.plm(pool_grunfeld_unbalanced, type="ghm", effect="twoways")
 
-#################### load modified version first (eg. source(plm_fixes_v1.4-0_kt.R)) ############
+#################### load modified version first (e.g. source(plm_fixes_v1.4-0_kt.R)) ############
 ### generalized Version to handle also unbalanced panels
 
 # individual
@@ -126,7 +126,7 @@ qnorm(alpha, lower.tail = F)
 # <->
 pnorm(1.645, lower.tail = F)
 
-# Implemetation in plm_v1.4-0 is which leads to the 10%-level (not 5%):
+# Implemetation as in plm_v1.4-0 (CRAN). Leads errornously to the 10% level (not 5%):
 pnorm(abs(1.645), lower.tail = FALSE)*2
 
 
@@ -135,14 +135,14 @@ qchisq(alpha, df=1, lower.tail = F) # H0_a, H0_b
 qchisq(alpha, df=2, lower.tail = F) # H0_c
 
 #### ghm    test for p-value of mixed chi-square distribution (more often called chi-bar-sqaure)
+#           as implemented in fixed version.
+#           (was simple chisqure in plm_v1.4-0 on CRAN)
+#
 # Baltagi (2013), p. 88 (note 2), p. 209 (note 10) gives critical values for 0.01, 0.05, 0.10 levels
-# 4.321 is a typo in Baltagi's textbook, should be 4.213
-crit <- c(7.289, 4.321, 2.952)
+# 4.321 is a typo in Baltagi's textbook, should be 4.213 [confirmed by priv. email by Baltagi]
+crit <- c(7.289, 4.213, 2.952) # crit <- c(7.289, 4.312, 2.952)
 p.vals <- (1/4)*pchisq(crit, df=0, lower.tail = F) + (1/2) * pchisq(crit, df=1, lower.tail = F) + (1/4) * pchisq(crit, df=2, lower.tail = F)
 
-# 4.321 ->  4.213
-crit_corr <- c(7.289, 4.213, 2.952)
-p.vals_corr <- (1/4)*pchisq(crit_corr, df=0, lower.tail = F) + (1/2) * pchisq(crit_corr, df=1, lower.tail = F) + (1/4) * pchisq(crit_corr, df=2, lower.tail = F)
 
 # Baltagi (2013), p 73, 74
 crit <- c(2.706) # for alpha=0.05

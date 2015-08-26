@@ -21,7 +21,7 @@ data("Grunfeld")
 Grunfeldpdata <- pdata.frame(Grunfeld, index = c("firm", "year"), drop.index = FALSE, row.names = TRUE)
 pool_grunfeld  <- plm(inv ~ value + capital, data=Grunfeldpdata, model="pooling")
 
-# original implementation (v1.4-0)
+# original implementation (v1.4-0) (plm:::pbsytest.panelmodel() this is meant to call the version 1.4-0 as on CRAN)
 plm:::pbsytest.panelmodel(pool_grunfeld, test = "ar") # chisq = 10.31                   => LM*_p in Baltagi's book
 plm:::pbsytest.panelmodel(pool_grunfeld, test = "re") # z = 25.787 [25.787^2=664.9694]  => sqrt(LM*_mu) in Baltagi's book
 plm:::pbsytest.panelmodel(pool_grunfeld, test = "j")  # chisq = 808.47                  => LM1 statistic in Baltagi's book
