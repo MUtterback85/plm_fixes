@@ -5,7 +5,7 @@
 # In this file, some routines are copied over from the original package and are modified.
 # Some routines are new.
 #
-# Version of this file 0.6-1
+# Version of this file 0.6-3
 # 
 # no warranty
 #
@@ -50,6 +50,7 @@
 #   - lag.pseries() can handle negative lags (leading values); lead.pseries() is added for convenience
 #
 #   - pbltest(): added panelmodel interface is added for convenience
+#   - pwtest(): pwtest.panelmodel: fixed: respect effect argument for panelmodel interface of test (formula interface was not affected)
 
 
 #### load package plm first ########
