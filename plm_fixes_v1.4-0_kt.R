@@ -5,7 +5,7 @@
 # In this file, some routines are copied over from the original package and are modified.
 # Some routines are new.
 #
-# Version of this file 0.6-3
+# Version of this file 0.6-4
 # 
 # no warranty
 #
@@ -627,9 +627,9 @@ pbltest_lm5 <- function(x, ...) {
   resfe <- resid(x)
   data <- model.frame(x)
     ## extract indices
-  index <- attr(data, "index")
-  index <- index[[1]]
-  tindex <- index[[2]]
+  indexvars <- attr(data, "index")
+  index <- indexvars[[1]]
+  tindex <- indexvars[[2]]
     
   ## till here. 
   ## ordering here if needed.
