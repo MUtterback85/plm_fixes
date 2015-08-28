@@ -1,7 +1,9 @@
 # Own quick'n'dirty fixes (?)/enhancements to plm version 1.4-0 as on CRAN
 # See original Package: https://cran.r-project.org/package=plm
-# In this file, some functions are copied over from the original package and are modified.
-# Some functions are new.
+# See there for original authors of the package.
+#
+# In this file, some routines are copied over from the original package and are modified.
+# Some routines are new.
 #
 # Version of this file 0.6-1
 # 
@@ -53,7 +55,7 @@
 #### load package plm first ########
 ####   must be v1.4-0 from CRAN ####
 require(plm)
-if (packageVersion("plm") != "1.4.0") stop("This fixes/enhancements are against plm v. 1.4-0 from CRAN (published 2013-12-28)")
+if (packageVersion("plm") != "1.4.0") stop("This fixes/enhancements are against plm version 1.4-0 from CRAN (published 2013-12-28)")
 
 ################## pdwtest.panelmodel() adapted from pseries.R [Durbin-Watson test] ##################
 pdwtest.panelmodel <- function(x,...) {
@@ -62,11 +64,9 @@ pdwtest.panelmodel <- function(x,...) {
   ## reference Baltagi (page 98) for FE application, Wooldridge page 288 for
   ## the general idea.
   
-  
   model <- plm:::describe(x, "model")
   effect <- plm:::describe(x, "effect")
   theta <- x$ercomp$theta
-  
   
   ## check package availability and load if necessary
   lm.ok <- require("lmtest")
@@ -271,28 +271,16 @@ print.summary.plm <- function(x,digits= max(3, getOption("digits") - 2),
 }
 
 
-################  Breusch-Pagan test for random effects model for unbalanced data ################  
-# Implemented:
-# Baltagi/Li (1990), A lagrange multiplier test for the error components model with incomplete panels,
-#                    Econometric Reviews, 9:1, 103-107, DOI: 10.1080/07474939008800180
-#
-# For unbalanced variants of Honda test and King/Wu see
-# Baltagi (2013), Econometric Analysis of Panel Data, 5th edition, pp. 200-203.
-#
-# => for twoway model and oneway
-
-
-
-
-
 ############## plmtest() ############################################
 # modified to handle unbalanced panels for all test statistics 
 #
 # For a concise overview with original references see
 # Baltagi (2013), Econometric Analysis of Panel Data, 5th edition, pp. 68-76 (balanced), pp. 200-203 (unbalanced).
-
-# unbalanced Version of Breusch-Pagan test: original reference
-# Baltagi/Li (1990), A lagrange multiplier test for the error components model with incomplete panels,
+#
+# balanced (original) version of Breusch-Pagan test: T.S. Breusch & A.R. Pagan (1979),
+#                                           A Simple Test for Heteroscedasticity and Random Coefficient Variation. Econometrica 47, 1287-1294
+#
+# unbalanced version: Baltagi/Li (1990), A lagrange multiplier test for the error components model with incomplete panels,
 #                    Econometric Reviews, 9:1, 103-107,
 
 plmtest <- function(x,...){
@@ -1000,3 +988,123 @@ pwfdtest.panelmodel <- function(x, ..., h0=c("fd","fe")) {
   return(RVAL)
   
 }
+
+### pwtest(): fixed panelmodel interface which did not respect the effect parameter, i. e.
+###           for a supplied panelmode effect="individual" and effect="time" deliver the same result for CRAN version 1.4-0
+###           formula interface is not affected
+
+pwtest <- function(x, ...){
+  UseMethod("pwtest")
+}
+
+pwtest.formula <- function(x, data, ...) {
+  cl <- match.call(expand.dots = TRUE)
+  if (names(cl)[3] == "") names(cl)[3] <- "data"
+  if (is.null(cl$model)) cl$model <- "pooling"
+  if (cl$model != "pooling") stop("pwtest only relevant for pooling models")
+  names(cl)[2] <- "formula"
+  m <- match(plm:::plm.arg,names(cl),0)
+  cl <- cl[c(1,m)]
+  cl[[1]] <- as.name("plm")
+  plm.model <- eval(cl,parent.frame())
+  pwtest.panelmodel(plm.model)
+  
+  ## "RE" test à la Wooldridge, see 10.4.4
+  ## (basically the scaled and standardized estimator for sigma from REmod)
+  ## does not rely on normality or homoskedasticity; 
+  ## H0: composite errors uncorrelated
+  
+  ## ref. Wooldridge, p.264
+  
+  ######### from here generic testing interface from
+  ######### plm to my code
+}
+
+pwtest.panelmodel <- function(x, effect=c("individual", "time"), ...){
+  ## tind is actually not needed here
+  if (plm:::describe(x, "model") != "pooling") stop("pwtest only relevant for pooling models")
+  
+  effect <- match.arg(effect) #effect <- plm:::describe(x, "effect") # here we want the effect as in the call of pwtest(), not of the already estimated model
+  data <- model.frame(x)
+  ## extract indices
+  
+  ## if effect="individual" std., else swap
+  index <- attr(data, "index")
+  if (effect == "individual"){
+    index <- index[[1]]
+    tindex <- index[[2]]
+  }
+  else {
+    index <- index[[2]]
+    tindex <- index[[1]]
+  }
+  ## det. number of groups and df
+  n <- length(unique(index))
+  X <- model.matrix(x)
+  
+  k <- ncol(X)
+  ## det. total number of obs. (robust vs. unbalanced panels)
+  nT <- nrow(X)
+  ## det. max. group numerosity
+  t <- max(tapply(X[,1],index,length))
+  
+  ## ref. Wooldridge, p.264
+  
+  ## extract resids
+  u <- resid(x)
+  
+  ## est. random effect variance
+  ## "pre-allocate" an empty list of length n
+  tres <- vector("list", n)
+  
+  ## list of n "empirical omega-blocks"
+  ## with averages of xproducts of t(i) residuals
+  ## for each group 1..n 
+  ## (possibly different sizes if unbal., thus a list
+  ## and thus, unlike Wooldridge (eq.10.37), ve divide 
+  ## every block by *his* t(t-1)/2)
+  #  unind <- unique(ind)
+  unind <- unique(index) # ????
+  
+  for(i in 1:n) {
+    ut <- u[index == unind[i]]
+    tres[[i]] <- ut%o%ut
+  }
+  
+  ## sum over all upper triangles of emp. omega blocks:
+  ## define aux. function
+  uptrisum <- function(x) {
+    uts <- sum(x[upper.tri(x,diag=FALSE)])
+    return(uts)}
+  
+  ## det. # of upper triangle members (n*t(t-1)/2 if balanced)
+  ti <- sapply(tres, function(x) dim(x)[[1]])
+  uptrinum <- sum(ti*(ti-1)/2)  # don't need this!!
+  
+  ## ...apply to list and sum over resulting vector (df corrected)
+  W <- sum(sapply(tres,uptrisum)) # /sqrt(n) simplifies out
+  
+  ## calculate se(Wstat) as in 10.40
+  seW <- sqrt( sum( sapply(tres,uptrisum)^2 ) )
+  
+  ## NB should we apply a df correction here, maybe that of the standard
+  ## RE estimator? (see page 261) 
+  
+  Wstat <- W/seW
+  names(Wstat) <- "z"
+  pW <- 2*pnorm(abs(Wstat),lower.tail=FALSE) # unlike LM, test is two-tailed!
+  
+  ##(insert usual htest features)
+  dname <- paste(deparse(substitute(formula)))
+  RVAL <- list(statistic = Wstat, parameter = NULL,
+               method = paste("Wooldridge's test for unobserved ",
+                              effect,"effects "),
+               alternative = "unobserved effect",
+               p.value = pW,
+               data.name =   dname)
+  class(RVAL) <- "htest"
+  return(RVAL)
+  
+}
+
+
