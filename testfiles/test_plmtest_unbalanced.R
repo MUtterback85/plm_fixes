@@ -139,8 +139,8 @@ qchisq(alpha, df=2, lower.tail = F) # H0_c
 #           (was simple chisqure in plm_v1.4-0 on CRAN)
 #
 # Baltagi (2013), p. 88 (note 2), p. 209 (note 10) gives critical values for 0.01, 0.05, 0.10 levels
-# 4.321 is a typo in Baltagi's textbook, should be 4.213 [confirmed by priv. email by Baltagi]
-crit <- c(7.289, 4.213, 2.952) # crit <- c(7.289, 4.312, 2.952)
+# 4.321 is a typo in Baltagi's textbook, should be 4.231 [confirmed by priv. email by Baltagi]
+crit <- c(7.289, 4.231, 2.952) # crit <- c(7.289, 4.312, 2.952)
 p.vals <- (1/4)*pchisq(crit, df=0, lower.tail = F) + (1/2) * pchisq(crit, df=1, lower.tail = F) + (1/4) * pchisq(crit, df=2, lower.tail = F)
 
 
