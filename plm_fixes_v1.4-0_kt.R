@@ -5,7 +5,7 @@
 # In this file, some routines are copied over from the original package and are modified.
 # Some routines are new.
 #
-# Version of this file 0.6-4
+# Version of this file 0.6-6
 # 
 # no warranty
 #
@@ -15,7 +15,7 @@
 #
 #
 # Find this file also at https://github.com/helix123/plm_fixes
-# Updated documentation for plm (mainly new text book editions and documentation for enhancements) is at https://github.com/helix123/plm/tree/master/man
+# Updated documentation for plm (mainly new text book editions and documentation of enhancements) is at https://github.com/helix123/plm/tree/master/man
 #
 #
 # Instructions:
@@ -1008,7 +1008,8 @@ pwtest.formula <- function(x, data, ...) {
   cl <- cl[c(1,m)]
   cl[[1]] <- as.name("plm")
   plm.model <- eval(cl,parent.frame())
-  pwtest.panelmodel(plm.model)
+  effect <- plm:::describe(plm.model, "effect")
+  pwtest.panelmodel(plm.model, effect=effect)
   
   ## "RE" test à la Wooldridge, see 10.4.4
   ## (basically the scaled and standardized estimator for sigma from REmod)
