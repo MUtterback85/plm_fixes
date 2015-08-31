@@ -5,7 +5,7 @@
 # In this file, some routines are copied over from the original package and are modified.
 # Some routines are new.
 #
-# Version of this file 0.6-6
+# Version of this file 0.7-0
 # 
 # no warranty
 #
@@ -19,7 +19,7 @@
 #
 #
 # Instructions:
-# Load this file after package plm is loaded. Modified functions are then masked.
+# Load this file after package plm is loaded. Modified functions are then masked; new functions become available.
 #
 #   - pdwtest.panelmodel() and pdwtest.formula (used by pdwtest()): Durbin-Watson test respecting panel structure,
 #                see http://stackoverflow.com/questions/31894055/pdwtest-from-plm-with-wrong-p-value-for-pooled-ols-durbin-watson-test-for-autoc]
@@ -50,7 +50,13 @@
 #   - lag.pseries() can handle negative lags (leading values); lead.pseries() is added for convenience
 #
 #   - pbltest(): added panelmodel interface is added for convenience
+#
 #   - pwtest(): pwtest.panelmodel: fixed: respect effect argument for panelmodel interface of test (formula interface was not affected)
+#
+#   - pbptest(): added Breusch-Pagan test against heteroskedasticity for panelmodels (wrapper which uses lmtest::bptest())
+#
+#   - pgqtest(): added Goldfeld-Quandt test against heteroskedasticity for panelmodels (wrapper which uses lmtest::gqtest())
+#                original lmtest::gqtest (CRAN v0.9-34) slightly modified to return alternative hypothesis in returned htest object
 
 
 #### load package plm first ########
@@ -694,7 +700,7 @@ pbltest_lm5 <- function(x, ...) {
 ##        Implementation follows the formulas for unbalanced panels, which reduce in for balanced data to the formulas for balanced panels.
 ##        Notation in code largly follows Baltagi's; m in Sosa-Escudero/Bera is total number of observations
 ## 
-## changed: chisq test (two-sided) is standard; for one-sided alternative (normalized version) use argument normal = TRUE
+## changed: chisq test (two-sided) is standard; for one-sided alternative (normalized version) of test="re", use argument normal = TRUE
 ##
 ## added: Check if we are working with a pooled model in the panelmodel interface, as this is necessary for the test.
 ##        (The formula interface has such a check already, but check was missing for panelmodel interface. Thus, for the old implementation,
@@ -1110,3 +1116,174 @@ pwtest.panelmodel <- function(x, effect=c("individual", "time"), ...){
 }
 
 
+
+
+## Breusch-Pagan test against heteroskedasticity for panelmodels
+#
+# only panelmodel interface implemented, not formula interface
+# Code from pbgtest() adapted
+
+pbptest <-function(x, ...) {
+  ## residual heteroskedasticity test based on the residuals of the demeaned
+  ## model and the regular bptest() in {lmtest}
+  
+  ## structure:
+  ## 1: take demeaned data from 'plm' object
+  ## 2: est. auxiliary model by OLS on demeaned data
+  ## 3: apply bptest() to auxiliary model and return the result
+  
+  if (!"panelmodel" %in% class(x)) stop("need to supply a panelmodel estimated with plm()")
+  model <- plm:::describe(x, "model")
+  effect <- plm:::describe(x, "effect")
+  theta <- x$ercomp$theta
+  
+  
+  ## retrieve demeaned data
+  demX <- model.matrix(x, model = model, effect = effect, theta = theta)
+  demy <- pmodel.response(model.frame(x), model = model, effect = effect, theta = theta)
+  
+  ## ...and group numerosities
+  Ti <- pdim(x)$Tint$Ti
+  ## set lag order to minimum group numerosity if not specified by user
+  ## (check whether this is sensible)
+  
+  if (is.null(order)) order <- min(Ti)
+  ## bg test on the demeaned model:
+  
+  ## check package availability and load if necessary
+  lm.ok <- require("lmtest")
+  if(!lm.ok) stop("package lmtest is needed but not available")
+  
+  ## bptest is the bptest, exception made for the method attribute
+  dots <- match.call(expand.dots=FALSE)[["..."]]      # fixed: added expand.dots=FALSE
+  if (!is.null(dots$type)) type <- dots$type else type <- "Chisq"
+  if (!is.null(dots$order.by)) order.by <- dots$order.by else order.by <- NULL
+  
+  auxformula <- demy~demX-1
+  lm.mod <- lm(auxformula)
+  return(lmtest::bptest(lm.mod, ...)) # call and return bptest from package 'lmtest'
+} # END pbptest()
+
+## Goldfeld-Quandt test against heteroskedasticity for panelmodels
+#
+# only panelmodel interface implemented, not formula interface
+# Code from pbgtest() adapted
+
+pgqtest <-function(x, ...) {
+  ## residual heteroskedasticity test based on the residuals of the demeaned
+  ## model and the regular gqtest() in {lmtest}
+  
+  ## structure:
+  ## 1: take demeaned data from 'plm' object
+  ## 2: est. auxiliary model by OLS on demeaned data
+  ## 3: apply gqtest() to auxiliary model and return the result
+  
+  if (!"panelmodel" %in% class(x)) stop("need to supply a panelmodel estimated with plm()")
+  model <- plm:::describe(x, "model")
+  effect <- plm:::describe(x, "effect")
+  theta <- x$ercomp$theta
+  
+  
+  ## retrieve demeaned data
+  demX <- model.matrix(x, model = model, effect = effect, theta = theta)
+  demy <- pmodel.response(model.frame(x), model = model, effect = effect, theta = theta)
+  
+  ## ...and group numerosities
+  Ti <- pdim(x)$Tint$Ti
+  ## set lag order to minimum group numerosity if not specified by user
+  ## (check whether this is sensible)
+  
+  if (is.null(order)) order <- min(Ti)
+  ## bg test on the demeaned model:
+  
+  ## check package availability and load if necessary
+  lm.ok <- require("lmtest")
+  if(!lm.ok) stop("package lmtest is needed but not available")
+  
+  ## bptest is the bptest, exception made for the method attribute
+  dots <- match.call(expand.dots=FALSE)[["..."]]      # fixed: added expand.dots=FALSE
+  if (!is.null(dots$type)) type <- dots$type else type <- "Chisq"
+  if (!is.null(dots$order.by)) order.by <- dots$order.by else order.by <- NULL
+  
+  auxformula <- demy~demX-1
+  lm.mod <- lm(auxformula)
+  return(gqtest(lm.mod, ...)) # call and return gqtest from package 'lmtest'
+} # END pgqtest()
+
+######## Original Goldfeld-Quant test (gqtest) from lmtest
+# CRAN v0.9-34
+# added: return alternative
+gqtest <- function(formula, point = 0.5, fraction = 0,
+                   alternative = c("greater", "two.sided", "less"), order.by = NULL, data = list())
+{
+  dname <- paste(deparse(substitute(formula)))
+  alternative <- match.arg(alternative)
+  
+  if(!inherits(formula, "formula")) {
+    X <- if(is.matrix(formula$x))
+      formula$x
+    else model.matrix(terms(formula), model.frame(formula))
+    y <- if(is.vector(formula$y))
+      formula$y
+    else model.response(model.frame(formula))
+  } else {
+    mf <- model.frame(formula, data = data)
+    y <- model.response(mf)
+    X <- model.matrix(formula, data = data)
+  }  
+  
+  k <- ncol(X)
+  n <- nrow(X)
+  if(point > 1) {
+    if(fraction < 1) fraction <- floor(fraction * n)
+    point1 <- point - ceiling(fraction/2)
+    point2 <- point + ceiling(fraction/2 + 0.01)
+  } else {
+    if(fraction >= 1) fraction <- fraction/n
+    point1 <- floor((point-fraction/2) * n)
+    point2 <- ceiling((point+fraction/2) * n + 0.01)
+  }
+  if (point2 > n-k+1 | point1 < k) stop("inadmissable breakpoint/too many central observations omitted")
+  
+  if(!is.null(order.by))
+  {
+    if(inherits(order.by, "formula")) {
+      z <- model.matrix(order.by, data = data)
+      z <- as.vector(z[,ncol(z)])
+    } else {
+      z <- order.by
+    }
+    X <- as.matrix(X[order(z),])
+    y <- y[order(z)]
+  }
+  
+  rss1 <- sum(lm.fit(as.matrix(X[1:point1,]),y[1:point1])$residuals^2)
+  rss2 <- sum(lm.fit(as.matrix(X[point2:n,]),y[point2:n])$residuals^2)
+  mss <- c(rss1/(point1-k), rss2/(n-point2+1-k))
+  
+  gq <- mss[2]/mss[1]
+  df <- c(n-point2+1-k, point1-k)
+  names(df) <- c("df1", "df2")
+  
+  PVAL <- switch(alternative,
+                 "two.sided" = (2*min(pf(gq, df[1], df[2]), pf(gq, df[1], df[2], lower.tail = FALSE))),
+                 "less" = pf(gq, df[1], df[2]),
+                 "greater" = pf(gq, df[1], df[2], lower.tail = FALSE))
+  
+  alternative <- switch(alternative,
+                        "two.sided" = "variance changes from segment 1 to 2",
+                        "less" = "variance decreases from segment 1 to 2",
+                        "greater" = "variance increases from segment 1 to 2")
+  
+  method <- "Goldfeld-Quandt test"
+  names(gq) <- "GQ"
+  RVAL <- list(statistic = gq,
+               parameter = df,
+               method = method,
+               p.value= PVAL,
+               alternative = alternative, # added: alternative = alternative
+               data.name=dname)
+  
+  class(RVAL) <- "htest"
+  return(RVAL)
+}
