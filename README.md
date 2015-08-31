@@ -37,7 +37,7 @@ plm 1.4-0 only offers the formula interface for this test. Using the formula int
 ##### pbsytest(..., test="j") (Baltagi/Li (1991)): fixed degrees of freedom, unbalanced version of tests
 also added check for correct input
 
-##### Baltagi/Li (1995): implemented statistic and test for LM5
+##### Baltagi/Li (1995): implemented statistic and test for LM5 [pbltest_lm5()]
 LM test for first-order serial correlation in a fixed effects model
 
 ##### Updated documentation
@@ -45,6 +45,26 @@ For some updates to plm's documentation (mainly new text book editions) see http
 
 ##### lag.pseries() can handle negative lags (leading values)
 lead.pseries() is also added for convenience
+
+##### plmtest(): all tests (bp, honda, kw, ghm) of original plmtest implemented for unbalanced panels;
+                 use correct mixed chisquare distribution (=chibarsquare) for type="ghm"
+
+##### pbsytest(): Fixed degrees of freedom error when test="j" (test of Baltagi/Li (1991), A joint test for serial correlation and random individual effects).
+                 Added unbalanced panel version from Sosa-Escudero/Bera (2008)
+                 Added warning if wrong input model.
+
+##### pbltest(): added panelmodel interface is added for convenience
+
+##### pwtest(): pwtest.panelmodel: fixed: respect effect argument for panelmodel interface of test (formula interface was not affected)
+
+##### pbptest(): added Breusch-Pagan test against heteroskedasticity for panelmodels (wrapper which uses lmtest::bptest())
+
+#####  pgqtest(): added Goldfeld-Quandt test against heteroskedasticity for panelmodels (wrapper which uses lmtest::gqtest())
+             original lmtest::gqtest (CRAN v0.9-34) slightly modified to return alternative hypothesis in returned htest object
+ 
+
+
+
 
 ## How to use
  
@@ -59,4 +79,8 @@ lead.pseries() is also added for convenience
    - pbltest_lm5()
    - lag.pseries()
    - lead.pseries() is added for convenience
+   - pbgtest()
+   - plmtest()
+   - pbptest()
+   - pgqtest()
 
