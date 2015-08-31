@@ -47,11 +47,11 @@ For some updates to plm's documentation (mainly new text book editions) see http
 lead.pseries() is also added for convenience
 
 ##### plmtest(): all tests (bp, honda, kw, ghm) of original plmtest implemented for unbalanced panels;
-                 use correct mixed chisquare distribution (=chibarsquare) for type="ghm"
+ use correct mixed chisquare distribution (=chibarsquare) for type="ghm"
 
 ##### pbsytest(): Fixed degrees of freedom error when test="j" (test of Baltagi/Li (1991), A joint test for serial correlation and random individual effects).
-                 Added unbalanced panel version from Sosa-Escudero/Bera (2008)
-                 Added warning if wrong input model.
+ Added unbalanced panel version from Sosa-Escudero/Bera (2008)
+ Added warning if wrong input model.
 
 ##### pbltest(): added panelmodel interface is added for convenience
 
@@ -60,7 +60,7 @@ lead.pseries() is also added for convenience
 ##### pbptest(): added Breusch-Pagan test against heteroskedasticity for panelmodels (wrapper which uses lmtest::bptest())
 
 #####  pgqtest(): added Goldfeld-Quandt test against heteroskedasticity for panelmodels (wrapper which uses lmtest::gqtest())
-             original lmtest::gqtest (CRAN v0.9-34) slightly modified to return alternative hypothesis in returned htest object
+ original lmtest::gqtest (CRAN v0.9-34) slightly modified to return alternative hypothesis in returned htest object
  
 
 
