@@ -1,12 +1,12 @@
 # Own quick'n'dirty fixes (?)/enhancements to plm version 1.4-0 as on CRAN
 # See original package plm:        https://cran.r-project.org/package=plm
 # See also orginal package lmtest: https://cran.r-project.org/package=lmtest
-# See there for original authors of the packages.
+# See there for original authors of these packages.
 #
-# In this file, some routines are copied over from the original package and are modified.
+# In this file, some routines are copied over from the original packages and are modified.
 # Some routines are new.
 #
-# Version of this file 0.7-2
+# Version of this file 0.7-5
 #
 # no warranty
 #
@@ -1209,9 +1209,10 @@ pgqtest <-function(x, ...) {
   return(gqtest(lm.mod, ...)) # call and return gqtest from package 'lmtest'
 } # END pgqtest()
 
-######## Original Goldfeld-Quant test (gqtest) from lmtest
+######## Original Goldfeld-Quandt test (gqtest) from lmtest
 # CRAN v0.9-34
 # added: return alternative
+# fixed: when order.by is specified by a formula, make sure the number of observations for ordering is right
 gqtest <- function(formula, point = 0.5, fraction = 0,
                    alternative = c("greater", "two.sided", "less"), order.by = NULL, data = list())
 {
@@ -1248,6 +1249,7 @@ gqtest <- function(formula, point = 0.5, fraction = 0,
   {
     if(inherits(order.by, "formula")) {
       z <- model.matrix(order.by, data = data)
+      z <- z[rownames(z) %in% rownames(X), ] # added this line
       z <- as.vector(z[,ncol(z)])
     } else {
       z <- order.by
