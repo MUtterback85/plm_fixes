@@ -1,12 +1,13 @@
 # Own quick'n'dirty fixes (?)/enhancements to plm version 1.4-0 as on CRAN
-# See original Package: https://cran.r-project.org/package=plm
-# See there for original authors of the package.
+# See original package plm:        https://cran.r-project.org/package=plm
+# See also orginal package lmtest: https://cran.r-project.org/package=lmtest
+# See there for original authors of the packages.
 #
 # In this file, some routines are copied over from the original package and are modified.
 # Some routines are new.
 #
-# Version of this file 0.7-0
-# 
+# Version of this file 0.7-2
+#
 # no warranty
 #
 # License: GPL v2, v3
@@ -49,13 +50,13 @@
 #
 #   - lag.pseries() can handle negative lags (leading values); lead.pseries() is added for convenience
 #
-#   - pbltest(): added panelmodel interface is added for convenience
+#   - pbltest(): added: panelmodel interface is added for convenience
 #
 #   - pwtest(): pwtest.panelmodel: fixed: respect effect argument for panelmodel interface of test (formula interface was not affected)
 #
-#   - pbptest(): added Breusch-Pagan test against heteroskedasticity for panelmodels (wrapper which uses lmtest::bptest())
+#   - pbptest(): added: Breusch-Pagan test against heteroskedasticity for panelmodels (wrapper which uses lmtest::bptest())
 #
-#   - pgqtest(): added Goldfeld-Quandt test against heteroskedasticity for panelmodels (wrapper which uses lmtest::gqtest())
+#   - pgqtest(): added: Goldfeld-Quandt test against heteroskedasticity for panelmodels (wrapper which uses lmtest::gqtest())
 #                original lmtest::gqtest (CRAN v0.9-34) slightly modified to return alternative hypothesis in returned htest object
 
 
@@ -65,7 +66,7 @@ require(plm)
 if (packageVersion("plm") != "1.4.0") stop("This fixes/enhancements are against plm version 1.4-0 from CRAN (published 2013-12-28)")
 
 ################## pdwtest.panelmodel() adapted from pseries.R [Durbin-Watson test] ##################
-pdwtest.panelmodel <- function(x,...) {
+pdwtest.panelmodel <- function(x, ...) {
   ## residual serial correlation test based on the residuals of the demeaned
   ## model and the regular dwtest() in {lmtest}
   ## reference Baltagi (page 98) for FE application, Wooldridge page 288 for
@@ -116,38 +117,36 @@ pdwtest.panelmodel <- function(x,...) {
   # There seems to be an modified version of Bhargava et al. (1982) which accounts for unbalanced and unequally spaced data
   # and an additional test Baltagi/Wu_LBI in this reference
   # Baltagi, B. H., and P. X. Wu. 1999. Unequally spaced panel data regressions with AR(1) disturbances. Econometric Theory 15, pp 814-823.
-  # STATA has modified.Bhargava et al. (1982) and Baltagi/Wu LBI: http://www.stata.com/manuals14/xtxtregar.pdf
+  # STATA has modified. Bhargava et al. (1982) and Baltagi/Wu LBI: http://www.stata.com/manuals14/xtxtregar.pdf
   # 
   
   # For FE and RE, we  need to take the panel structure into account
-  # we can do the calculation based on the FE model as the assumptions are also true for the RE model
+  # Verbeek (2004, 2nd edition), p. 358:
+  # "Because the fixed effects estimator is also consistent in the random effects model, it is
+  # also possible to use this panel data Durbin-Watson test in the latter model."
+  
   # 
   # Statisticians: Can someone please look into this?
   #
-  # references: FIXME/TODO [Verbeek 4th edition, papers?]
-  #             FE: 
 
-    # if RE model => calculate associated FE model based on formula
-    # if passed model is already FE or pooled OLS => go ahead
-    mod_to_test <- if (model == "random") fe_mod <- plm(x$formula, data = model.frame(x), model="within") else x
-    
-    if (pdim(mod_to_test)$balanced != TRUE) warning("Applying Bhargava et al. (1982) Durbin-Watson test for balanced panels to an unbalanced panel.")
+    if (pdim(x)$balanced != TRUE) warning("Applying Bhargava et al. (1982) Durbin-Watson test for balanced panels to an unbalanced panel.")
   
     # residuals are now class pseries, so diff.pseries is used and the differences are computed within observational units
     # (not across as it would be the case if base::diff() is used and as it is done for lm-objects)
     # NAs are introduced by the differencing as one observation is lost per observational unit
-    dw <- sum(plm:::diff.pseries(residuals(mod_to_test))^2, na.rm = T) / sum(residuals(mod_to_test)^2)
+    dw <- sum(plm:::diff.pseries(residuals(x))^2, na.rm = T) / sum(residuals(x)^2)
     
     # p-value computation seems to be difficult, so no p-value is calculated
     # maybe someone with more statistical knowledge can look into this one
     
     # constuct htest object
-    names(dw) <- "DW"
+    names(dw) <- "DW_balance_panel"
     ARtest <- list(statistic = dw,
-                   method = "Bhargava et al. (1982): Durbin-Watson test for serial correlation in balanced panel models (pooled OLS, within (fixed) and random effects) \n
-                   For random effects models, the Durbin-Watson statistic is calculated to the corresponding fixed effect model. \n
+                   method = "Bhargava et al. (1982): Durbin-Watson test for serial correlation in balanced panel models (pooled OLS, within (fixed) and random effects)\n
                    No p-value computed as distubution of statistic under panel assumptions is difficult to calculate.",
-                   alternative = NULL, p.value = NULL, data.name = paste(deparse(x$formula)))
+                   alternative = NULL,
+                   p.value = NULL 
+                   ) # data.name = paste(deparse(x$formula))
     
     class(ARtest) <- "htest"
 
@@ -1167,7 +1166,7 @@ pbptest <-function(x, ...) {
 ## Goldfeld-Quandt test against heteroskedasticity for panelmodels
 #
 # only panelmodel interface implemented, not formula interface
-# Code from pbgtest() adapted
+# Code from pbgtest() adapted, https://cran.r-project.org/package=lmtest
 
 pgqtest <-function(x, ...) {
   ## residual heteroskedasticity test based on the residuals of the demeaned
