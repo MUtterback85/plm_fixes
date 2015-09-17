@@ -6,7 +6,7 @@
 # In this file, some routines are copied over from the original packages and are modified.
 # Some routines are new.
 #
-# Version of this file 0.7-5
+# Version of this file 0.7-7
 #
 # no warranty
 #
@@ -63,7 +63,10 @@
 #### load package plm first ########
 ####   must be v1.4-0 from CRAN ####
 require(plm)
+require(lmtest)
 if (packageVersion("plm") != "1.4.0") stop("This fixes/enhancements are against plm version 1.4-0 from CRAN (published 2013-12-28)")
+if (packageVersion("lmtest") != "0.9.34") stop("This fixes/enhancements are against lmtest version 0.9-34 from CRAN (published 2015-06-06)")
+
 
 ################## pdwtest.panelmodel() adapted from pseries.R [Durbin-Watson test] ##################
 pdwtest.panelmodel <- function(x, ...) {
@@ -178,7 +181,11 @@ summary.plm <- function(object, .vcov = NULL, ...){
   object$r.squared <- c(rsq  = r.squared(object),
                         adjrsq = r.squared(object, dfcor = TRUE))
   # construct the table of coefficients
-  if (!is.null(.vcov)){
+  if (!is.null(.vcov)) {
+    
+    if (!is.matrix(.vcov)) {
+      .vcov <- .vcov(object) # if .vcov is specified as a function, calculate variance-covariance matrix and continue with that
+    }
     std.err <- sqrt(diag(.vcov))
     
     # overwrite already calculated F statistic as we have a user supplied .vcov which needs to be respected
@@ -193,7 +200,7 @@ summary.plm <- function(object, .vcov = NULL, ...){
 
     # extract values from returned object from car::linearHypothesis
     object$fstatistic$statistic <- c("F" = return_car_lH[3][2, ]) # f statistic
-    object$fstatistic$p.value <- c("F" = return_car_lH[4][2, ]) # p-value for F statistic
+    object$fstatistic$p.value   <- c("F" = return_car_lH[4][2, ]) # p-value for F statistic
     object$fstatistic$parameter <- c("df1" = return_car_lH[2][2, ], "df2" = return_car_lH[1][2, ])  # Dfs
 
   }
@@ -1212,7 +1219,7 @@ pgqtest <-function(x, ...) {
 ######## Original Goldfeld-Quandt test (gqtest) from lmtest
 # CRAN v0.9-34
 # added: return alternative
-# fixed: when order.by is specified by a formula, make sure the number of observations for ordering is right
+# fixed: when order.by is specified by a formula, make sure the right observations for ordering are used
 gqtest <- function(formula, point = 0.5, fraction = 0,
                    alternative = c("greater", "two.sided", "less"), order.by = NULL, data = list())
 {
@@ -1248,9 +1255,16 @@ gqtest <- function(formula, point = 0.5, fraction = 0,
   if(!is.null(order.by))
   {
     if(inherits(order.by, "formula")) {
-      z <- model.matrix(order.by, data = data)
-      z <- z[rownames(z) %in% rownames(X), ] # added this line
-      z <- as.vector(z[,ncol(z)])
+    
+      if(inherits(formula, "formula")) {
+        z <- model.matrix(order.by, data = data)
+        z <- z[rownames(z) %in% rownames(X), ] # added this line
+        z <- as.vector(z[,ncol(z)])
+      } else { # is lm-model
+        z <- X[ , as.character(terms(order.by)[[2]])]
+      }
+      
+
     } else {
       z <- order.by
     }
@@ -1288,3 +1302,101 @@ gqtest <- function(formula, point = 0.5, fraction = 0,
   class(RVAL) <- "htest"
   return(RVAL)
 }
+
+
+
+### Importet from r-forge, development version of plm rev. 125
+### Regression-based Hausman test which can be made robust
+
+# Wooldridge (2010), pp. 328-334 (for robust test esp. p. 332-333)
+# Baltagi (2013), pp. 76-77
+phtest.formula <- function(x, data, model = c("within","random"),
+                           method = c("chisq", "aux"),
+                           index=NULL, vcov=NULL, ...){
+  if(length(model)!=2) stop("two models should be indicated")
+  for (i in 1:2){
+    model.name <- model[i]
+    if(!(model.name %in% names(plm:::model.plm.list))){
+      stop("model must be one of ",oneof(model.plm.list))
+    }
+  }
+  switch(match.arg(method),
+         chisq={
+           cl <- match.call(expand.dots = TRUE)
+           cl$model <- model[1]
+           names(cl)[2] <- "formula"
+           m <- match(plm:::plm.arg,names(cl),0)
+           cl <- cl[c(1,m)]
+           cl[[1]] <- as.name("plm")
+           plm.model.1 <- eval(cl,parent.frame())
+           plm.model.2 <- update(plm.model.1, model = model[2])
+           return(phtest(plm.model.1, plm.model.2))
+         },
+         aux={
+           ## some interface checks here
+           if(model[1]!="within") {
+             stop("Please supply 'within' as first model type")
+           }
+           ## set pdata; but check before if data is not already a pdata.frame
+           if (!("pdata.frame" %in% class(data))) data <- plm.data(data, indexes=index) #, ...) # data <- plm.data(data, indexes=index)
+           
+           rey <- pmodel.response(plm(formula=x, data=data,
+                                      model=model[2]))
+           reX <- model.matrix(plm(formula=x, data=data,
+                                   model=model[2]))
+           feX <- model.matrix(plm(formula=x, data=data,
+                                   model=model[1]))
+           dimnames(feX)[[2]] <- paste(dimnames(feX)[[2]],
+                                       "tilde", sep=".")
+           ## fetch indices here, check pdata
+           data <- data.frame(cbind(data[, 1:2], rey, reX, feX))[,-4]
+           auxfm <- as.formula(paste("rey~",
+                                     paste(dimnames(reX)[[2]][-1],
+                                           collapse="+"), "+",
+                                     paste(dimnames(feX)[[2]],
+                                           collapse="+"), sep=""))
+           auxmod <- plm(formula=auxfm, data=data, model="pooling")
+           nvars <- dim(feX)[[2]]
+           R <- diag(1, nvars)
+           r <- rep(0, nvars) # here just for clarity of illustration
+           
+           omega0 <- vcov(auxmod)[(nvars+2):(nvars*2+1),
+                                  (nvars+2):(nvars*2+1)]
+           Rbr <- R %*% coef(auxmod)[(nvars+2):(nvars*2+1)] - r
+           
+           h2t <- crossprod(Rbr, solve(omega0, Rbr))
+           ph2t <- pchisq(h2t, df=nvars, lower.tail=FALSE)
+           
+           df <- nvars
+           names(df) <- "df"
+           names(h2t) <- "chisq"
+           
+           if(!is.null(vcov)) {
+             vcov=paste(", covariance: ",
+                        paste(deparse(substitute(vcov))),
+                        sep="")
+           }
+           
+           haus2 <- list(statistic=h2t,
+                         p.value=ph2t,
+                         parameter=df, # fixed: df instead of nvars [corrects printing]
+                         method=paste("Regression-based Hausman test",
+                                      vcov, sep=""),
+                         alternative="one model is inconsistent",
+                         data.name=paste(deparse(substitute(fm))))
+           class(haus2) <- "htest"
+           return(haus2)
+         })
+}
+
+
+
+
+
+
+
+
+
+
+
+
