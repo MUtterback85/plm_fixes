@@ -6,7 +6,7 @@
 # In this file, some routines are copied over from the original packages and are modified.
 # Some routines are new.
 #
-# Version of this file 0.7-7
+# Version of this file 0.7-8
 #
 # no warranty
 #
@@ -58,13 +58,16 @@
 #
 #   - pgqtest(): added: Goldfeld-Quandt test against heteroskedasticity for panelmodels (wrapper which uses lmtest::gqtest())
 #                original lmtest::gqtest (CRAN v0.9-34) slightly modified to return alternative hypothesis in returned htest object
+#
+#   - r.squared(): Adjusted R-squared corrected for pooling models, no matched lm's adj. R-squared.
+#                  For pooling models without intercept, the regular R-squared and the adjusted R-squared still diverge from lm's (adj.) R-squared, a warning is printed.
 
 
 #### load package plm first ########
 ####   must be v1.4-0 from CRAN ####
 require(plm)
 require(lmtest)
-if (packageVersion("plm") != "1.4.0") stop("This fixes/enhancements are against plm version 1.4-0 from CRAN (published 2013-12-28)")
+if (packageVersion("plm")    != "1.4.0") stop("This fixes/enhancements are against plm version 1.4-0 from CRAN (published 2013-12-28)")
 if (packageVersion("lmtest") != "0.9.34") stop("This fixes/enhancements are against lmtest version 0.9-34 from CRAN (published 2015-06-06)")
 
 
@@ -266,8 +269,8 @@ print.summary.plm <- function(x,digits= max(3, getOption("digits") - 2),
   cat("\n")
   cat(paste("Total Sum of Squares:    ",signif(plm:::tss.plm(x),digits),"\n",sep=""))
   cat(paste("Residual Sum of Squares: ",signif(deviance(x),digits),"\n",sep=""))
-  cat(paste("R-Squared      : ", signif(x$r.squared[1], digits),"\n"))
-  cat("      Adj. R-Squared : ", signif(x$r.squared[2], digits),"\n")
+  cat(paste("R-Squared     : ", signif(x$r.squared[1], digits),"\n"))
+  cat(paste("Adj. R-Squared: ", signif(x$r.squared[2], digits),"\n"))
   fstat <- x$fstatistic
   if (names(fstat$statistic) == "F"){
     cat(paste("F-statistic: ",signif(fstat$statistic),
@@ -282,6 +285,36 @@ print.summary.plm <- function(x,digits= max(3, getOption("digits") - 2),
   }
   invisible(x)
 }
+
+
+# adjusted R-squared corrected (now meets lm's adjusted R-squared for pooling models)
+# still: pooling models without intercept: R-squared and adj. R-squared are not correct
+r.squared <- function(object, model = NULL,
+                      type = c('cor', 'rss', 'ess'), dfcor = FALSE){
+  if (is.null(model)) model <- plm:::describe(object, "model")
+  effect <- plm:::describe(object, "effect")
+  type <- match.arg(type)
+  if (type == 'cor'){
+    y <- pmodel.response(object, model = model, effect = effect)
+    haty <- plm:::fitted.plm(object, model = model, effect = effect)
+    R2 <- cor(y, haty)^2
+  }
+  if (type == 'rss'){
+    R2 <- 1 - deviance(object, model = model) / tss(object, model = model)
+  }
+  if (type == 'ess'){
+    haty <- fitted(object, model = model)
+    mhaty <- mean(haty)
+    ess <- sum( (haty - mhaty)^2)
+    R2 <- ess / tss(object, model = model)
+  }
+  if (dfcor) {
+    R2 <- 1-(1-R2) * (length(resid(object))-1) / df.residual(object) # [does not account for models without intercept!] was:  R2 * df.residual(object) / length(resid(object) - 1)
+    if (!"(Intercept)" %in% attr(object$coefficients, "names") & model == "pooling") warning("R-Squared (regular and adjusted) for pooling models without intercept is not correct. Use lm() to get the correct value.")
+  }
+  return(R2)
+}
+
 
 
 ############## plmtest() ############################################
