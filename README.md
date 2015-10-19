@@ -60,8 +60,12 @@ lead.pseries() is also added for convenience
 ##### pbptest(): added Breusch-Pagan test against heteroskedasticity for panelmodels (wrapper which uses lmtest::bptest())
 
 #####  pgqtest(): added Goldfeld-Quandt test against heteroskedasticity for panelmodels (wrapper which uses lmtest::gqtest())
- original lmtest::gqtest (CRAN v0.9-34) slightly modified to return alternative hypothesis in returned htest object
+
+#####  lmtest::gqtest (CRAN v0.9-34) slightly modified to return alternative hypothesis in returned htest object
  
+#####  r.squared(): Adjusted R-squared corrected for pooling models, no matched lm's adj. R-squared.
+For pooling models without intercept, the regular R-squared and the adjusted R-squared still diverge from lm's (adj.) R-squared, a warning is printed.
+
 
 
 
