@@ -6,7 +6,7 @@
 # In this file, some routines are copied over from the original packages and are modified.
 # Some routines are new.
 #
-# Version of this file 0.7-8
+# Version of this file 0.7-9
 #
 # no warranty
 #
@@ -61,7 +61,8 @@
 #
 #   - r.squared(): Adjusted R-squared corrected for pooling models, no matched lm's adj. R-squared.
 #                  For pooling models without intercept, the regular R-squared and the adjusted R-squared still diverge from lm's (adj.) R-squared, a warning is printed.
-
+#
+#   - nobs.plm(): added nobs() function for convenience to extract number of total observations used for estimated of plm model (like nobs() for lm models)
 
 #### load package plm first ########
 ####   must be v1.4-0 from CRAN ####
@@ -1423,6 +1424,9 @@ phtest.formula <- function(x, data, model = c("within","random"),
 }
 
 
+nobs.plm <- function(x) {
+  if (inherits(x, "plm") | inherits(x, "panelmodel")) return(plm::pdim(x)$nT$N) else stop("Input x needs to be of class 'plm' (or 'panelmodel'), i. e. a panel model estimated by plm()")
+}
 
 
 
