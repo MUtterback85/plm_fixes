@@ -66,7 +66,7 @@ lead.pseries() is also added for convenience
 #####  r.squared(): Adjusted R-squared corrected for pooling models, no matched lm's adj. R-squared.
 For pooling models without intercept, the regular R-squared and the adjusted R-squared still diverge from lm's (adj.) R-squared, a warning is printed.
 
-
+##### nobs(): added nobs() function for convenience to extract number of total observations used for estimated of plm model (like nobs() for lm models)
 
 
 
