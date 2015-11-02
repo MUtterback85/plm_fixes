@@ -21,3 +21,6 @@ pwtest(pool_prodc)
 pwtest(pool_prodc, effect="individual")
 pwtest(pool_prodc, effect="time")
 
+# error message should not contain 'twoways' => need to adapt code
+pwtest(formula, data=Produc, effect="individualXX")
+pwtest(pool_prodc, data=Produc, effect="individualXX")
