@@ -1,4 +1,4 @@
-# Own quick'n'dirty fixes (?)/enhancements to plm version 1.4-0
+# Own quick'n'dirty fixes/enhancements to plm version 1.4-0
 see https://cran.r-project.org/package=plm
 
 Some code is new by me, some is adapted or just slightly modified from the indicated source
