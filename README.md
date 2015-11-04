@@ -64,7 +64,7 @@ lead.pseries() is also added for convenience
 #####  lmtest::gqtest (CRAN v0.9-34) slightly modified to return alternative hypothesis in returned htest object
  
 #####  r.squared(): Adjusted R-squared corrected for pooling models, now matches lm's adj. R-squared.
-NB: For pooling models _without_ intercept, the regular R-squared and the adjusted R-squared still diverge from lm's (adj.) R-squared, a warning is printed.
+NB: For pooling models _without_ intercept, the regular R-squared and the adjusted R-squared still diverge from lm's (adj.) R-squared, a warning is printed. See also testfile: https://github.com/helix123/plm_fixes/blob/master/testfiles/test_adj_R2.R
 
 ##### nobs(): added nobs() function for convenience to extract number of total observations used for estimating plm model (like nobs() for lm models)
 
