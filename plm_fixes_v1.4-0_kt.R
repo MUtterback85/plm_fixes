@@ -6,7 +6,7 @@
 # In this file, some routines are copied over from the original packages and are modified.
 # Some routines are new.
 #
-# Version of this file 0.7-10
+# Version of this file 0.7-11
 #
 # no warranty
 #
@@ -63,6 +63,9 @@
 #                  For pooling models without intercept, the regular R-squared and the adjusted R-squared still diverge from lm's (adj.) R-squared, a warning is printed.
 #
 #   - nobs.plm(): added nobs() function for convenience to extract number of total observations used for estimated of plm model (like nobs() for lm models)
+#   
+#   - phtest.formula(): backported regression-based Hausman test from SVN repository; fixed data handling etc.
+#  
 
 #### load package plm first ########
 ####   must be v1.4-0 from CRAN ####
@@ -1443,7 +1446,7 @@ phtest.formula <- function(x, data, model = c("within","random"),
                              method      = paste("Regression-based Hausman test",
                                               vcov, sep=""),
                              alternative = "one model is inconsistent",
-                             data.name   = paste(deparse(substitute(auxfm))))
+                             data.name   = paste(deparse(substitute(x))))
                class(haus2) <- "htest"
                return(haus2)
          })
