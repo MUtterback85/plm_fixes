@@ -90,4 +90,5 @@ NB: For pooling models _without_ intercept, the regular R-squared and the adjust
    - pgqtest()
    - r.squared()
    - nobs()
+   - phtest.formula()
 
