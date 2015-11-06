@@ -31,7 +31,9 @@ plm:::pbsytest.panelmodel(pool_grunfeld, test = "j")  # chisq = 808.47          
 # from http://pages.stern.nyu.edu/~wgreene/Text/tables/TableF13-1.txt
 # or   http://statmath.wu.ac.at/~zeileis/grunfeld/TableF13-1.txt
 
-Grunfeld_greene_5firms <- read.csv("M:/Stat_tests/datasets/Greene_Grunfeld_TableF13-1.txt", sep="")
+Grunfeld_greene_5firms <- read.csv("http://pages.stern.nyu.edu/~wgreene/Text/tables/TableF13-1.txt", sep="")
+# Grunfeld_greene_5firms <- read.csv("http://statmath.wu.ac.at/~zeileis/grunfeld/TableF13-1.txt", sep="") # alternative source
+
 pGrunfeld_greene_5firms <- pdata.frame(Grunfeld_greene_5firms, index = c("Firm", "Year"), drop.index = FALSE, row.names = TRUE)
 pool_grunfeld_half <- plm(I ~ F + C, data=pGrunfeld_greene_5firms, model="pooling")
 re_grunfeld_half <- plm(I ~ F + C, data=pGrunfeld_greene_5firms, model="random")
@@ -69,7 +71,7 @@ pbsytest_mod_unbalanced.panelmodel(pool_grunfeld_half, test = "ar", normal = T)
 ############ Replicate tests from original paper Sosa-Escudero/Bera (2008) ####################
 ## data set for test from Sosa-Escudero/Bera (2008), pp. 75-77
 ## available as STATA .dta at http://www.stata-journal.com/software/sj8-1/sg164_1/ginipanel5.dta
-require(haven)
+library(haven)
 ginipanel5 <- read_dta("http://www.stata-journal.com/software/sj8-1/sg164_1/ginipanel5.dta")
 pginipanel5 <- pdata.frame(ginipanel5, index = c("naglo", "ano"), drop.index = FALSE, row.names = TRUE)
 

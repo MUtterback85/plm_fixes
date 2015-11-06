@@ -6,7 +6,7 @@
 # In this file, some routines are copied over from the original packages and are modified.
 # Some routines are new.
 #
-# Version of this file 0.7-9
+# Version of this file 0.7-10
 #
 # no warranty
 #
@@ -268,10 +268,10 @@ print.summary.plm <- function(x,digits= max(3, getOption("digits") - 2),
   if (is.null(subset)) printCoefmat(coef(x), digits = digits)
   else printCoefmat(coef(x)[subset, , drop = FALSE], digits = digits)
   cat("\n")
-  cat(paste("Total Sum of Squares:    ",signif(plm:::tss.plm(x),digits),"\n",sep=""))
-  cat(paste("Residual Sum of Squares: ",signif(deviance(x),digits),"\n",sep=""))
-  cat(paste("R-Squared     : ", signif(x$r.squared[1], digits),"\n"))
-  cat(paste("Adj. R-Squared: ", signif(x$r.squared[2], digits),"\n"))
+  cat(paste("Total Sum of Squares:    ", signif(plm:::tss.plm(x),digits),"\n", sep=""))
+  cat(paste("Residual Sum of Squares: ", signif(deviance(x),digits),     "\n", sep=""))
+  cat(paste("R-Squared     : ", signif(x$r.squared[1], digits),          "\n", sep=""))
+  cat(paste("Adj. R-Squared: ", signif(x$r.squared[2], digits),          "\n", sep=""))
   fstat <- x$fstatistic
   if (names(fstat$statistic) == "F"){
     cat(paste("F-statistic: ",signif(fstat$statistic),
@@ -325,10 +325,10 @@ r.squared <- function(object, model = NULL,
 # Baltagi (2013), Econometric Analysis of Panel Data, 5th edition, pp. 68-76 (balanced), pp. 200-203 (unbalanced).
 #
 # balanced (original) version of Breusch-Pagan test: T.S. Breusch & A.R. Pagan (1979),
-#                                           A Simple Test for Heteroscedasticity and Random Coefficient Variation. Econometrica 47, 1287-1294
+#                                           A Simple Test for Heteroscedasticity and Random Coefficient Variation, Econometrica 47, pp. 1287-1294
 #
 # unbalanced version: Baltagi/Li (1990), A lagrange multiplier test for the error components model with incomplete panels,
-#                    Econometric Reviews, 9:1, 103-107,
+#                    Econometric Reviews, 9:1, pp. 103-107,
 
 plmtest <- function(x,...){
   UseMethod("plmtest")
@@ -371,7 +371,7 @@ plmtest.plm <- function(x,
   if (effect != "twoways"){
     # oneway
     if (!type %in% c("honda", "bp", "kw"))
-      stop("type must be one of honda, bp or kw for a one way model") # kw oneway coincides with honda
+      stop("type must be one of \"honda\", \"bp\" or \"kw\" for a one way model") # kw oneway coincides with honda
     
     ifelse(effect == "individual", stat <- LM1, stat <- LM2)
     stat <- switch(type,
@@ -379,62 +379,62 @@ plmtest.plm <- function(x,
                    bp    = c(chisq  = stat^2),
                    kw    = c(normal = stat))
     parameter <- switch(type,
-                        honda = NULL,
-                        bp = 1,
-                        kw = NULL)
+                          honda = NULL,
+                          bp = 1,
+                          kw = NULL)
     pval <- switch(type,
-                   honda = pnorm(stat, lower.tail = FALSE), # honda oneway ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
-                   bp    = pchisq(stat, df = 1, lower.tail = FALSE),
-                   kw    = pnorm(stat, lower.tail = FALSE)) # kw ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
+                     honda = pnorm(stat, lower.tail = FALSE), # honda oneway ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
+                     bp    = pchisq(stat, df = 1, lower.tail = FALSE),
+                     kw    = pnorm(stat, lower.tail = FALSE)) # kw ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
   }
   else { # twoways
     stat <- switch(type,
-                   ghm   = c(chibarsq = max(0,LM1)^2+max(0,LM2)^2),
-                   bp    = c(chisq = LM1^2+LM2^2),
-                   honda = c(normal = (LM1+LM2)/sqrt(2)),
-                   kw    = c(normal = (sqrt(M11-N_obs)/sqrt(M11+M22-2*N_obs))*LM1+(sqrt(M22-N_obs)/sqrt(M11+M22-2*N_obs))*LM2))
+                     ghm   = c(chibarsq = max(0,LM1)^2+max(0,LM2)^2),
+                     bp    = c(chisq = LM1^2+LM2^2),
+                     honda = c(normal = (LM1+LM2)/sqrt(2)),
+                     kw    = c(normal = (sqrt(M11-N_obs)/sqrt(M11+M22-2*N_obs))*LM1+(sqrt(M22-N_obs)/sqrt(M11+M22-2*N_obs))*LM2))
     
     parameter <- switch(type,
-                        ghm   = c(df0 = 0L, df1=1L, df2=2L, w1=1/4, w2=1/2, w3=1/4),
-                        bp    = c(df = 2),
-                        honda = c(df = 2),
-                        kw    = c(df = 2))
+                          ghm   = c(df0 = 0L, df1=1L, df2=2L, w0=1/4, w1=1/2, w2=1/4),
+                          bp    = c(df = 2),
+                          honda = c(df = 2),
+                          kw    = c(df = 2))
     
     pval <- switch(type,
-                   ghm   = (1/4)*pchisq(stat, df=0, lower.tail = F) + (1/2) * pchisq(stat, df=1, lower.tail = F) + (1/4) * pchisq(stat, df=2, lower.tail = F), # mixed chisq (also called chi-bar-square), see Baltagi (2013), pp. 71-72, 74, 88, 202-203, 209
-                   honda = pnorm(stat,lower.tail=FALSE), # honda twoways ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
-                   bp    = pchisq(stat,df=parameter,lower.tail=FALSE),
-                   kw    = pnorm(stat,lower.tail=FALSE)) # kw twoways ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
+                     ghm   = (1/4)*pchisq(stat, df=0, lower.tail = F) + (1/2) * pchisq(stat, df=1, lower.tail = F) + (1/4) * pchisq(stat, df=2, lower.tail = F), # mixed chisq (also called chi-bar-square), see Baltagi (2013), pp. 71-72, 74, 88, 202-203, 209
+                     honda = pnorm(stat,lower.tail=FALSE), # honda twoways ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
+                     bp    = pchisq(stat,df=parameter,lower.tail=FALSE),
+                     kw    = pnorm(stat,lower.tail=FALSE)) # kw twoways ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
   }
   
   method.type <- switch(type,
-                        honda  = "Honda",
-                        bp     = "Breusch-Pagan",
-                        ghm    = "Gourieroux, Holly and Monfort",
-                        kw     = "King and Wu")
+                          honda  = "Honda",
+                          bp     = "Breusch-Pagan",
+                          ghm    = "Gourieroux, Holly and Monfort",
+                          kw     = "King and Wu")
   
   method.effect <- switch(effect,
-                          id      = "individual effects",
-                          time    = "time effects",
-                          twoways = "two-ways effects")
+                            id      = "individual effects",
+                            time    = "time effects",
+                            twoways = "two-ways effects")
   
   balanced.type <- ifelse(balanced, "balanced", "unbalanced")
   
   method <- paste("Lagrange Multiplier Test - ", method.effect,
-                  " (",method.type,") for ", balanced.type, " panels\n",sep="")
+                  " (",method.type,") for ", balanced.type, " panels\n", sep="")
   
   if(type %in% c("honda", "kw")) {
     RVAL <- list(statistic = stat,
-                p.value   = pval,
-                method    = method,
-                data.name = plm:::data.name(x))
+                 p.value   = pval,
+                 method    = method,
+                 data.name = plm:::data.name(x))
   }
   else {
     RVAL <- list(statistic = stat,
-                p.value   = pval,
-                method    = method,
-                parameter = parameter,
-                data.name = plm:::data.name(x))
+                 p.value   = pval,
+                 method    = method,
+                 parameter = parameter,
+                 data.name = plm:::data.name(x))
   }
   RVAL$alternative <- "significant effects"
   class(RVAL) <- "htest"
@@ -522,7 +522,7 @@ pbltest.panelmodel <- function(x, ...) {
   pbltest.formula(formula(x$formula), data=cbind(index(x), x$model), index=names(index(x)), ...)
 }
 
-### KT copy formula interface here, otherwise the wrapper won't work
+### KT: copy formula interface here, otherwise the wrapper won't work
 pbltest.formula <- function(x, data, alternative = c("twosided", "onesided"), index=NULL, ...) {
   ## this version (pbltest0) based on a "formula, pdataframe" interface
   
@@ -667,7 +667,7 @@ pbltest.formula <- function(x, data, alternative = c("twosided", "onesided"), in
 
 pbltest_lm5 <- function(x, ...) {
   
-  if (plm:::describe(x, "model") == "pooling") stop("Test only for within effects (=fixed effects) or random effect models.")
+  if (plm:::describe(x, "model") == "pooling") stop("Test only for within effects (=fixed effects) or random effects models.")
   
 ##### following code adapted from pbsytest() #####
   resfe <- resid(x)
@@ -756,7 +756,7 @@ pbltest_lm5 <- function(x, ...) {
 # Concise treatment in Baltagi (2005), Econometric Analysis of Panel Data, 3rd edition, pp. 96-97
 #                   or Baltagi (2013), Econometric Analysis of Panel Data, 5th edition, pp. 108:
 
-pbsytest.panelmodel <- function(x, test = c("ar","re","j"), normal = FALSE, ...){
+pbsytest.panelmodel <- function(x, test = c("ar","re","j"), normal = FALSE, ...) {
   
   test <- match.arg(test)
   if (plm:::describe(x, "model") != "pooling") stop("pbsytest only relevant for pooling models") # added
@@ -790,8 +790,8 @@ pbsytest.panelmodel <- function(x, test = c("ar","re","j"), normal = FALSE, ...)
   N_obs <- pdim$nT$N ## det. total number of obs.
   
   ## calc. A and B:
-  S1 <- sum( tapply(poolres,ind,sum)^2 )
-  S2 <- sum( poolres^2 )
+  S1 <- sum(tapply(poolres,ind,sum)^2)
+  S2 <- sum(poolres^2)
   
   A <- S1/S2 -1
   
@@ -833,7 +833,7 @@ pbsytest.panelmodel <- function(x, test = c("ar","re","j"), normal = FALSE, ...)
            stat <- N_obs^2 * ((A^2 - 4*A*B + 4*B^2) / (2*(a - 3*N_obs + 2*n)) + (B^2/(N_obs - n))) # RS_lamba_u in Sosa-Escudero/Bera (2008), p. 74 
            df <- c(df=2)
            names(stat) <- "chisq"
-           pstat <- pchisq(stat, df=df, lower.tail=FALSE) # fixed: df=df
+           pstat <- pchisq(stat, df=df, lower.tail=FALSE) # # Degrees of freedom in the joint test (test="j") of Baltagi/Li (1991) should be 2 (chisquare(2) distributed, see Baltagi/Li (1991), p. 279 and again in Baltagi/Li (1995), p. 136
            tname <- "Baltagi and Li AR-RE joint test"
            myH0_alt <- "AR(1) errors or random effects"
          }
@@ -1057,7 +1057,7 @@ pwtest.formula <- function(x, data, ...) {
   effect <- plm:::describe(plm.model, "effect")
   pwtest.panelmodel(plm.model, effect=effect)
   
-  ## "RE" test à la Wooldridge, see 10.4.4
+  ## "RE" test ? la Wooldridge, see 10.4.4
   ## (basically the scaled and standardized estimator for sigma from REmod)
   ## does not rely on normality or homoskedasticity; 
   ## H0: composite errors uncorrelated
@@ -1339,7 +1339,7 @@ gqtest <- function(formula, point = 0.5, fraction = 0,
 
 
 
-### Importet from r-forge, development version of plm rev. 125
+### Imported from r-forge, development version of plm rev. 125
 ### Regression-based Hausman test which can be made robust
 
 # Wooldridge (2010), pp. 328-334 (for robust test esp. p. 332-333)
@@ -1367,63 +1367,89 @@ phtest.formula <- function(x, data, model = c("within","random"),
            return(phtest(plm.model.1, plm.model.2))
          },
          aux={
-           ## some interface checks here
-           if(model[1]!="within") {
-             stop("Please supply 'within' as first model type")
-           }
-           ## set pdata; but check before if data is not already a pdata.frame
-           if (!("pdata.frame" %in% class(data))) data <- plm.data(data, indexes=index) #, ...) # data <- plm.data(data, indexes=index)
-           
-           rey <- pmodel.response(plm(formula=x, data=data,
-                                      model=model[2]))
-           reX <- model.matrix(plm(formula=x, data=data,
-                                   model=model[2]))
-           feX <- model.matrix(plm(formula=x, data=data,
-                                   model=model[1]))
-           dimnames(feX)[[2]] <- paste(dimnames(feX)[[2]],
-                                       "tilde", sep=".")
-           ## fetch indices here, check pdata
-           data <- data.frame(cbind(data[, 1:2], rey, reX, feX))[,-4]
-           auxfm <- as.formula(paste("rey~",
-                                     paste(dimnames(reX)[[2]][-1],
-                                           collapse="+"), "+",
-                                     paste(dimnames(feX)[[2]],
-                                           collapse="+"), sep=""))
-           auxmod <- plm(formula=auxfm, data=data, model="pooling")
-           nvars <- dim(feX)[[2]]
-           R <- diag(1, nvars)
-           r <- rep(0, nvars) # here just for clarity of illustration
-           
-           omega0 <- vcov(auxmod)[(nvars+2):(nvars*2+1),
-                                  (nvars+2):(nvars*2+1)]
-           Rbr <- R %*% coef(auxmod)[(nvars+2):(nvars*2+1)] - r
-           
-           h2t <- crossprod(Rbr, solve(omega0, Rbr))
-           ph2t <- pchisq(h2t, df=nvars, lower.tail=FALSE)
-           
-           df <- nvars
-           names(df) <- "df"
-           names(h2t) <- "chisq"
-           
-           if(!is.null(vcov)) {
-             vcov=paste(", covariance: ",
-                        paste(deparse(substitute(vcov))),
-                        sep="")
-           }
-           
-           haus2 <- list(statistic=h2t,
-                         p.value=ph2t,
-                         parameter=df, # fixed: df instead of nvars [corrects printing]
-                         method=paste("Regression-based Hausman test",
-                                      vcov, sep=""),
-                         alternative="one model is inconsistent",
-                         data.name=paste(deparse(substitute(fm))))
-           class(haus2) <- "htest"
-           return(haus2)
+ ## some interface checks here
+               if(model[1]!="within") {
+                   stop("Please supply 'within' as first model type")
+               }
+             
+               ## set pdata
+               if (!inherits(data, "pdata.frame")) data <- plm.data(data, indexes=index) #, ...)
+               
+               row.names(data) <- NULL # reset rownames of original data set (number rownames in clean sequence) to make rownames
+                                       # comparable for later comparision to obs used in estimation of models (get rid of NA values)
+                                       # [needed becausepmodel.response() and model.matrix() do not retain fancy rownames, but rownames]
+               
+               # calculatate FE and RE model
+               fe_mod <- plm(formula=x, data=data, model=model[1])
+               re_mod <- plm(formula=x, data=data, model=model[2])
+               
+               reY <- pmodel.response(re_mod)
+               reX <- model.matrix(re_mod)[ , -1] # intercept not needed
+               feX <- model.matrix(fe_mod)
+               dimnames(feX)[[2]] <- paste(dimnames(feX)[[2]],
+                                           "tilde", sep=".")
+               
+               ## estimated models could have fewer obs (due droping of NAs) compared to the original data
+               ## => match original data and observations used in estimated models
+               ## routine adapted from lmtest::bptest
+               commonrownames <- intersect(intersect(intersect(row.names(data), names(reY)), row.names(reX)), row.names(feX))
+               if (!(all(c(row.names(data) %in% commonrownames, commonrownames %in% row.names(data))))) {
+                 data <- data[commonrownames, ]
+                 reY  <- reY[commonrownames]
+                 reX  <- reX[commonrownames, ]
+                 feX  <- feX[commonrownames, ]
+               }
+               
+               # Tests of correct matching of obs (just for safety ...)
+                if (!all.equal(length(reY), nrow(data), nrow(reX), nrow(feX)))
+                  stop("number of cases/observations do not match, most likely due to NAs in \"data\"")
+                if (any(c(is.na(names(reY)), is.na(row.names(data)), is.na(row.names(reX)), is.na(row.names(feX)))))
+                    stop("one (or more) rowname(s) is (are) NA")
+                if (!all.equal(names(reY), row.names(data), row.names(reX), row.names(feX)))
+                  stop("row.names of cases/observations do not match, most likely due to NAs in \"data\"")
+
+               ## fetch indices here, check pdata
+               ## construct data set and formula for auxiliary regression
+               data <- data.frame(cbind(data[, 1:2], reY, reX, feX))
+               auxfm <- as.formula(paste("reY~",
+                                         paste(dimnames(reX)[[2]],
+                                               collapse="+"), "+",
+                                         paste(dimnames(feX)[[2]],
+                                               collapse="+"), sep=""))
+               auxmod <- plm(formula=auxfm, data=data, model="pooling")
+               nvars <- dim(feX)[[2]]
+               R <- diag(1, nvars)
+               r <- rep(0, nvars) # here just for clarity of illustration
+               omega0 <- vcov(auxmod)[(nvars+2):(nvars*2+1),
+                                      (nvars+2):(nvars*2+1)]
+               Rbr <- R %*% coef(auxmod)[(nvars+2):(nvars*2+1)] - r
+
+               h2t <- crossprod(Rbr, solve(omega0, Rbr))
+               ph2t <- pchisq(h2t, df=nvars, lower.tail=FALSE)
+
+               df <- nvars
+               names(df) <- "df"
+               names(h2t) <- "chisq"
+
+               if(!is.null(vcov)) {
+                   vcov <- paste(", vcov: ",
+                                  paste(deparse(substitute(vcov))),
+                                  sep="")
+               }
+
+               haus2 <- list(statistic   = h2t,
+                             p.value     = ph2t,
+                             parameter   = df,
+                             method      = paste("Regression-based Hausman test",
+                                              vcov, sep=""),
+                             alternative = "one model is inconsistent",
+                             data.name   = paste(deparse(substitute(auxfm))))
+               class(haus2) <- "htest"
+               return(haus2)
          })
 }
 
-
+# TODO: wrapper mit UseMethod etc.
 nobs.plm <- function(x) {
   if (inherits(x, "plm") | inherits(x, "panelmodel")) return(plm::pdim(x)$nT$N) else stop("Input x needs to be of class 'plm' (or 'panelmodel'), i. e. a panel model estimated by plm()")
 }
