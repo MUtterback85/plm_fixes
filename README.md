@@ -7,7 +7,8 @@ License: GPL
 
 no warranty
 
-
+##### Hausman test (phtest()): regression-based Hausmantest which can be made robust
+ backported from r-forge/SVN
 
 ##### F statistic (summary())
  F statistic when a user specified variance-covariance matrix is supplied (for robust inference)
