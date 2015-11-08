@@ -6,7 +6,7 @@
 # In this file, some routines are copied over from the original packages and are modified.
 # Some routines are new.
 #
-# Version of this file 0.7-11
+# Version of this file 0.7-12
 #
 # no warranty
 #
@@ -340,7 +340,7 @@ plmtest <- function(x,...){
 plmtest.plm <- function(x,
                         effect = c("individual", "time", "twoways"),
                         type = c("honda", "bp", "ghm", "kw"),
-                        ...){
+                        ...) {
   
   effect <- match.arg(effect)
   type <- match.arg(type)
@@ -358,8 +358,7 @@ plmtest.plm <- function(x,
   res <- resid(x)
   
   ### calc of parts of test statistic ##
-  
-  # see for calc. w/o using matrix calculation e.g. Baltagi/Li (1990), p. 106
+  # calc. is done w/o using matrix calculation, see e.g. Baltagi/Li (1990), p. 106
   A1 <- as.numeric(crossprod(tapply(res,id,sum))/sum(res^2) - 1)   # == A1 <- sum(tapply(res,id,sum)^2)/sum(res^2) - 1
   A2 <- as.numeric(crossprod(tapply(res,time,sum))/sum(res^2) - 1) # == A2 <- sum(tapply(res,time,sum)^2)/sum(res^2) - 1
   
@@ -400,14 +399,14 @@ plmtest.plm <- function(x,
     parameter <- switch(type,
                           ghm   = c(df0 = 0L, df1=1L, df2=2L, w0=1/4, w1=1/2, w2=1/4),
                           bp    = c(df = 2),
-                          honda = c(df = 2),
-                          kw    = c(df = 2))
+                          honda = NULL,
+                          kw    = NULL)
     
     pval <- switch(type,
                      ghm   = (1/4)*pchisq(stat, df=0, lower.tail = F) + (1/2) * pchisq(stat, df=1, lower.tail = F) + (1/4) * pchisq(stat, df=2, lower.tail = F), # mixed chisq (also called chi-bar-square), see Baltagi (2013), pp. 71-72, 74, 88, 202-203, 209
-                     honda = pnorm(stat,lower.tail=FALSE), # honda twoways ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
-                     bp    = pchisq(stat,df=parameter,lower.tail=FALSE),
-                     kw    = pnorm(stat,lower.tail=FALSE)) # kw twoways ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
+                     honda = pnorm(stat,lower.tail = FALSE), # honda twoways ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
+                     bp    = pchisq(stat, df = parameter,lower.tail = FALSE),
+                     kw    = pnorm(stat, lower.tail = FALSE)) # kw twoways ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
   }
   
   method.type <- switch(type,
