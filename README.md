@@ -7,7 +7,29 @@ License: GPL
 
 no warranty
 
-##### Hausman test (phtest()): regression-based Hausmantest which can be made robust
+## How to use
+ 
+ Load this file after package plm (v1.4-0) is loaded. The following functions are then loaded into the global environment and thus used instead of their respective counterparts of package plm:
+   - pdwtest.panelmodel() and pdwtest.formula (used by pdwtest())
+   - summary.plm() and print.summary.plm() (used by summary())
+   - plmtest()
+   - pbgtest.panelmodel() 
+   - pbltest()
+   - pbsytest()
+   - pbltest.panelmodel()
+   - pbltest_lm5()
+   - lag.pseries()
+   - lead.pseries() is added for convenience
+   - pbgtest()
+   - plmtest()
+   - pbptest()
+   - pgqtest()
+   - r.squared()
+   - nobs()
+   - phtest.formula()
+
+
+##### Hausman test (phtest()): regression-based Hausman test which can be made robust
  backported from r-forge/SVN
 
 ##### F statistic (summary())
@@ -71,24 +93,4 @@ NB: For pooling models _without_ intercept, the regular R-squared and the adjust
 
 
 
-## How to use
- 
- Load this file after package plm is loaded. The following functions are then masked or new:
-   - pdwtest.panelmodel() and pdwtest.formula (used by pdwtest())
-   - summary.plm() and print.summary.plm() (used by summary())
-   - plmtest()
-   - pbgtest.panelmodel() 
-   - pbltest()
-   - pbsytest()
-   - pbltest.panelmodel()
-   - pbltest_lm5()
-   - lag.pseries()
-   - lead.pseries() is added for convenience
-   - pbgtest()
-   - plmtest()
-   - pbptest()
-   - pgqtest()
-   - r.squared()
-   - nobs()
-   - phtest.formula()
 
