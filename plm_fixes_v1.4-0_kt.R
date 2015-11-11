@@ -6,7 +6,7 @@
 # In this file, some routines are copied over from the original packages and are modified.
 # Some routines are new.
 #
-# Version of this file 0.7-12
+# Version of this file 0.7-13
 #
 # no warranty
 #
@@ -382,12 +382,12 @@ plmtest.plm <- function(x,
                    kw    = c(normal = stat))
     parameter <- switch(type,
                           honda = NULL,
-                          bp = 1,
+                          bp = c(df = 1),  # df = 1 in the oneway case (Baltagi (2013), p. 70)
                           kw = NULL)
     pval <- switch(type,
-                     honda = pnorm(stat, lower.tail = FALSE), # honda oneway ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
-                     bp    = pchisq(stat, df = 1, lower.tail = FALSE),
-                     kw    = pnorm(stat, lower.tail = FALSE)) # kw ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
+                     honda = pnorm(stat, lower.tail = FALSE),  # honda oneway ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
+                     bp    = pchisq(stat, df = parameter, lower.tail = FALSE), # is df=1 in the one-way case, alternative is two-sided (Baltagi (2013), p. 70/201)
+                     kw    = pnorm(stat, lower.tail = FALSE)) # kw oneway ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
   }
   else { # twoways
     stat <- switch(type,
@@ -404,8 +404,8 @@ plmtest.plm <- function(x,
     
     pval <- switch(type,
                      ghm   = (1/4)*pchisq(stat, df=0, lower.tail = F) + (1/2) * pchisq(stat, df=1, lower.tail = F) + (1/4) * pchisq(stat, df=2, lower.tail = F), # mixed chisq (also called chi-bar-square), see Baltagi (2013), pp. 71-72, 74, 88, 202-203, 209
-                     honda = pnorm(stat,lower.tail = FALSE), # honda twoways ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
-                     bp    = pchisq(stat, df = parameter,lower.tail = FALSE),
+                     honda = pnorm(stat,lower.tail = FALSE),  # honda two-ways ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
+                     bp    = pchisq(stat, df = parameter,lower.tail = FALSE), # is df = 2 in the twoway case, alternative is two-sided (Baltagi (2013), p. 70/201)
                      kw    = pnorm(stat, lower.tail = FALSE)) # kw twoways ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
   }
   
@@ -423,7 +423,7 @@ plmtest.plm <- function(x,
   balanced.type <- ifelse(balanced, "balanced", "unbalanced")
   
   method <- paste("Lagrange Multiplier Test - ", method.effect,
-                  " (",method.type,") for ", balanced.type, " panels\n", sep="")
+                  " (",method.type,") for ", balanced.type, " panels", sep="")
   
   if(type %in% c("honda", "kw")) {
     RVAL <- list(statistic = stat,
@@ -438,10 +438,27 @@ plmtest.plm <- function(x,
                  parameter = parameter,
                  data.name = plm:::data.name(x))
   }
-  RVAL$alternative <- "significant effects"
+  RVAL$alternative <- "significant effects" # TODO: maybe distinguish be b/w one-sided and two-sided alternatives? (bp: two-sided alt.; all others: one-sided alt.?)
   class(RVAL) <- "htest"
   return(RVAL)
 } ## END plmtest.plm()
+
+
+plmtest.formula <- function(x, data, ...,
+                            effect = c("individual", "time", "twoways"),
+                            type = c("honda", "bp", "ghm", "kw")) {
+  
+  cl <- match.call(expand.dots = TRUE)
+  cl$model <- "pooling" # plmtest is performed on the pooling model...
+  cl$effect <- NULL     # ... and pooling model has no argument effect...
+  cl$type <- NULL       # ... and no argument type => see below: pass on args effect and type to plmtest.plm()
+  names(cl)[2] <- "formula"
+  m <- match(plm.arg, names(cl), 0)
+  cl <- cl[c(1,m)]
+  cl[[1]] <- as.name("plm")
+  plm.model <- eval(cl, parent.frame())
+  plmtest(plm.model, effect = effect, type = type) # pass on args. effect and type
+}
 
 
 ############### Breusch-Godfrey test ##################################
