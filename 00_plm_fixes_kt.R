@@ -1,12 +1,15 @@
-# Own quick'n'dirty fixes (?)/enhancements to plm version 1.4-0 as on CRAN
-# See original package plm:        https://cran.r-project.org/package=plm
+# Own quick'n'dirty fixes (?)/enhancements to plm version 1.4-15 as on r-forge (development version)
+# and lmtest as on CRAN (2015-12-30)
+#
+# plm's development version on r-forge (see there for how to install): https://r-forge.r-project.org/R/?group_id=406
+# See original package plm on CRAN: https://cran.r-project.org/package=plm
 # See also orginal package lmtest: https://cran.r-project.org/package=lmtest
 # See there for original authors of these packages.
 #
 # In this file, some routines are copied over from the original packages and are modified.
 # Some routines are new.
 #
-# Version of this file 0.7-13
+# Version of this file 0.8
 #
 # no warranty
 #
@@ -16,11 +19,10 @@
 #
 #
 # Find this file also at https://github.com/helix123/plm_fixes
-# Updated documentation for plm (mainly new text book editions and documentation of enhancements) is at https://github.com/helix123/plm/tree/master/man
-#
 #
 # Instructions:
-# Load this file after package plm is loaded. Modified functions are then masked; new functions become available.
+# Load this file after package plm is loaded. Modified functions are then (mostly) loaded into the global environment;
+# new functions become available.
 #
 #   - pdwtest.panelmodel() and pdwtest.formula (used by pdwtest()): Durbin-Watson test respecting panel structure,
 #                see http://stackoverflow.com/questions/31894055/pdwtest-from-plm-with-wrong-p-value-for-pooled-ols-durbin-watson-test-for-autoc]
@@ -35,22 +37,29 @@
 #                                                                is supplied (for robust inference)
 #                             see http://stackoverflow.com/questions/31163353/computing-f-statistic-with-user-supplied-covariance-matrix
 #
-#   - plmtest(): all tests (bp, honda, kw, ghm) of original plmtest implemented for unbalanced panels;
-#                use correct mixed chisquare distribution (=chibarsquare) for type="ghm"
+#   - plmtest(): * all tests (bp, honda, kw, ghm) of original plmtest implemented for unbalanced panels;
+#                * use correct mixed chisquare distribution (=chibarsquare) for type="ghm";
+#                * fixed p-values for some tests (now everything according to Baltagi's testdata)
 #
-#   - pbgtest() [Breusch-Godfrey test]:  allows to pass on type="F" to lmtest::bgtest(), thus offering the small sample test (F test)
+#                [code is also in seperate branch on r-forge: https://r-forge.r-project.org/scm/viewvc.php/branches/kt_unbalanced/plmtest/?root=plm]
 #
-#   - pbsytest(): Fixed degrees of freedom error when test="j" (test of Baltagi/Li (1991), A joint test for serial correlation and random individual effects).
-#                 Added unbalanced panel version from Sosa-Escudero/Bera (2008)
-#                 Added warning if wrong input model.
+#   - pbgtest() [Breusch-Godfrey test]: [not needed anymore as of (at least) v1.5-13]
+#                           allows to pass on type="F" to lmtest::bgtest(), thus offering the small sample test (F test)
+#
+#   - pbsytest(): * Fixed degrees of freedom error when test="j" (test of Baltagi/Li (1991), A joint test for serial correlation and random individual effects).
+#                 * Added unbalanced panel version from Sosa-Escudero/Bera (2008)
+#                 * Added warning if wrong input model.
+#
+#                 [code is also in seperate branch on r-forge: https://r-forge.r-project.org/scm/viewvc.php/branches/kt_unbalanced/pbsytest/?root=plm]
 #
 #   - pbltest_lm5() [added]: new function added to compute test statistic LM5 from Baltagi/Li (1995):
 #                                               An LM test for first-order serial correlation in a fixed effects model
 #                      [can also be used in a random effects model]
 #
-#   - lag.pseries() can handle negative lags (leading values); lead.pseries() is added for convenience
+#   - lag.pseries() [not needed anymore as of (at least) v1.5-14/rev. 176]
+#                   * can handle negative lags (leading values); lead.pseries() is added as a wrapper for convenience
 #
-#   - pbltest(): added: panelmodel interface is added for convenience
+#   - pbltest(): added: panelmodel interface for convenience
 #
 #   - pwtest(): pwtest.panelmodel: fixed: respect effect argument for panelmodel interface of test (formula interface was not affected)
 #
@@ -59,20 +68,30 @@
 #   - pgqtest(): added: Goldfeld-Quandt test against heteroskedasticity for panelmodels (wrapper which uses lmtest::gqtest())
 #                original lmtest::gqtest (CRAN v0.9-34) slightly modified to return alternative hypothesis in returned htest object
 #
-#   - r.squared(): Adjusted R-squared corrected for pooling models, no matched lm's adj. R-squared.
-#                  For pooling models without intercept, the regular R-squared and the adjusted R-squared still diverge from lm's (adj.) R-squared, a warning is printed.
+#   - r.squared(): * Adjusted R-squared corrected for pooling models (before, it did not match lm's adj. R-squared)
+#                  NB: For pooling models without intercept, the regular R-squared and the adjusted R-squared still diverge
+#                      from lm's (adj.) R-squared, a warning is printed.
 #
-#   - nobs.plm(): added nobs() function for convenience to extract number of total observations used for estimated of plm model (like nobs() for lm models)
-#   
-#   - phtest.formula(): backported regression-based Hausman test from SVN repository; fixed data handling etc.
-#  
+#   - nobs.plm(): [not needed anymore as of (at least) v1.5-13]
+#                  added nobs() function for convenience to extract number of total observations used for estimated of plm model (like nobs() for lm models)
+#
+#   - phtest.formula(): [not needed anymore as of (at least) v1.5-13]
+#                      backported regression-based Hausman test from SVN repository; fixed data handling etc.
+#
+#   - fitted.plm(): issue warning if model has silently dropped coefficients (likely due to linear dependency) which
+#                   will give a additional information on why the method fails
+#                   [NB: for plm package development: Change implementation of fitted.plm to accomodate such models with dropped coefficients?
+#                                                     Align behaviour of plm() with lm() [lm keeps coefficients and sets them NA]?]
+#
+#   - mylm() [not exported from package]: added warning if coefficients get dropped during model estimation
 
 #### load package plm first ########
-####   must be v1.4-0 from CRAN ####
-require(plm)
-require(lmtest)
-if (packageVersion("plm")    != "1.4.0") stop("This fixes/enhancements are against plm version 1.4-0 from CRAN (published 2013-12-28)")
+library(plm)
+library(lmtest)
+if (packageVersion("plm")    != "1.5.14") stop("This fixes/enhancements are against plm version 1.5-14 from r-forge (published 2015-12-29)")
 if (packageVersion("lmtest") != "0.9.34") stop("This fixes/enhancements are against lmtest version 0.9-34 from CRAN (published 2015-06-06)")
+
+options(warnPartialMatchDollar = TRUE)
 
 
 ################## pdwtest.panelmodel() adapted from pseries.R [Durbin-Watson test] ##################
@@ -193,22 +212,26 @@ summary.plm <- function(object, .vcov = NULL, ...){
     if (!is.matrix(.vcov)) {
       .vcov <- .vcov(object) # if .vcov is specified as a function, calculate variance-covariance matrix and continue with that
     }
+    print(.vcov)
     std.err <- sqrt(diag(.vcov))
     
     # overwrite already calculated F statistic as we have a user supplied .vcov which needs to be respected
     # use car::linearHypothesis() for calculation
     
     car.ok <- require("car")
-    if(!car.ok) stop("package car is needed but not available")
+    if (!car.ok) stop("package car is needed but not available")
 
     # Need to check if there is an intercept in the model.
     # Intercept should not be passed to car::linearHypothesis(), because if so, the wrong # degrees of freedom is calculated
     return_car_lH <- car::linearHypothesis(object, names(coef(object))[if ("(Intercept)" %in% names(coef(object))) -1 else TRUE], test="F", vcov. = .vcov)
-
+    
+    # Note: has.intercept() returns TRUE for FE models...
+    # return_car_lH <- car::linearHypothesis(object, names(coef(object))[has.intercept(object), -1, TRUE], test="F", vcov. = .vcov)
+    
     # extract values from returned object from car::linearHypothesis
     object$fstatistic$statistic <- c("F" = return_car_lH[3][2, ]) # f statistic
     object$fstatistic$p.value   <- c("F" = return_car_lH[4][2, ]) # p-value for F statistic
-    object$fstatistic$parameter <- c("df1" = return_car_lH[2][2, ], "df2" = return_car_lH[1][2, ])  # Dfs
+    object$fstatistic$parameter <- c("df1" = return_car_lH[2][2, ], "df2" = return_car_lH[1][2, ]) # Dfs
 
   }
   else{
@@ -273,7 +296,7 @@ print.summary.plm <- function(x,digits= max(3, getOption("digits") - 2),
   cat("\n")
   cat(paste("Total Sum of Squares:    ", signif(plm:::tss.plm(x),digits),"\n", sep=""))
   cat(paste("Residual Sum of Squares: ", signif(deviance(x),digits),     "\n", sep=""))
-  cat(paste("R-Squared     : ", signif(x$r.squared[1], digits),          "\n", sep=""))
+  cat(paste("R-Squared:      ", signif(x$r.squared[1], digits),          "\n", sep=""))
   cat(paste("Adj. R-Squared: ", signif(x$r.squared[2], digits),          "\n", sep=""))
   fstat <- x$fstatistic
   if (names(fstat$statistic) == "F"){
@@ -289,6 +312,7 @@ print.summary.plm <- function(x,digits= max(3, getOption("digits") - 2),
   }
   invisible(x)
 }
+# END print.summary.plm
 
 
 # adjusted R-squared corrected (now meets lm's adjusted R-squared for pooling models)
@@ -300,7 +324,7 @@ r.squared <- function(object, model = NULL,
   type <- match.arg(type)
   if (type == 'cor'){
     y <- pmodel.response(object, model = model, effect = effect)
-    haty <- plm:::fitted.plm(object, model = model, effect = effect)
+    haty <- fitted.plm(object, model = model, effect = effect)
     R2 <- cor(y, haty)^2
   }
   if (type == 'rss'){
@@ -318,10 +342,100 @@ r.squared <- function(object, model = NULL,
   }
   return(R2)
 }
+# END r.squared
+
+### fitted.plm(): added test for existence of all coefficients (dropped coefficients due to linear dependency)
+fitted.plm <- function(object, model = NULL, ...){
+  # there are two 'models' used ; the fitted model and the
+  # transformation used for the fitted values
+  fittedmodel <- plm:::describe(object, "model")
+  if (is.null(model)) model <- fittedmodel
+  effect <- plm:::describe(object, "effect")
+  X <- model.matrix(object, model = model)
+  y <- pmodel.response(object, model = model)
+  beta <- coef(object)
+  if (model == "within" & fittedmodel != "within"){
+    Xw <- model.matrix(object, model = "within", effect = effect)
+    varwith <- colnames(Xw)
+    beta <- beta[varwith]
+  }
+  
+  # Test if all coefficients could be estimated by plm
+  # [plm silently drops non-estimatable coefficients [v1.5-13]]
+  # With this test, we provide an additional warning message to
+  # the user to enhance the error message from failing crossprod later in the code
+  # which relies on non-dropped coefficients; see also testfile tests/fitted.plm.R
+  # Test could be computationally/space expensive due to creation of model.matrix.
+  if (!setequal(names(object$coefficients), colnames(model.matrix(object)))) {
+     warning("Coefficients of estimated model do not match variables in its specified model.matrix.
+            This is likely due to non-estimatable coefficients (compare object$formula with object$coefficients).")
+  }
+  
+  if (fittedmodel == "within"){
+    if (model == "pooling"){
+      if (has.intercept(object)) X <- X[,-1]
+      index <- attr(model.frame(object), "index")
+      if (effect != "time") id <- index[[1]]
+      if (effect != "individual") time <- index[[2]]
+      fe <- switch(effect,
+                   individual = fixef(object, effect = "individual")[as.character(id)],
+                   time = fixef(object, effect="time")[as.character(time)],
+                   twoways = fixef(object, effect = "individual")[as.character(id)] +
+                             fixef(object, effect = "time")[as.character(time)])
+      fv <- as.numeric(crossprod(t(X), beta)) + fe
+    }
+    if (model == "between"){
+      alpha <- mean(y) - crossprod(apply(X[, -1], 2, mean), beta)
+      beta <- c(alpha, beta)
+      fv <- as.numeric(crossprod(t(X), beta))
+    }
+    if (model == "within"){
+      fv <- as.numeric(crossprod(t(X), beta))
+    }
+  }
+  else{
+    fv <- as.numeric(crossprod(t(X), beta))
+  }
+  return(structure(fv, index =  index(object), class = "pseries"))
+}
+## END fitted.plm()
+
+
+# mylm: added: warning if coefficents are dropped during estimation
+mylm <- function(y, X, W = NULL){
+  names.X <- colnames(X)
+  if (is.null(W))
+      result <- lm(y ~ X - 1)
+  else
+      result <- twosls(y, X, W)
+  if (any(is.na(coef(result)))){
+    na.coef <- is.na(coef(result))
+    warning("Coefficient(s) '", paste((names.X)[na.coef], collapse = ", "), "' could not be estimated and is (are) dropped.")
+    X <- X[, !na.coef, drop = FALSE]
+    if (is.null(W)) result <- lm(y ~ X - 1)
+    else result <- twosls(y, X, W)
+  }
+  result$vcov <- vcov(result)
+  result$X <- X
+  result$y <- y
+  result$W <- W
+  names(result$coefficients) <- colnames(result$vcov) <-
+    rownames(result$vcov) <- colnames(X)
+  return(result)
+}
+# assign modified mylm to plm's namespace, needed because mylm is not an exported function in package plm
+assignInNamespace("mylm", mylm, envir = as.environment("package:plm"))
+rm(mylm)
+# End: mylm()
+
+
+
+
 
 
 
 ############## plmtest() ############################################
+# [code is also in seperate branch on r-forge: https://r-forge.r-project.org/scm/viewvc.php/branches/kt_unbalanced/plmtest/?root=plm]
 # modified to handle unbalanced panels for all test statistics 
 #
 # For a concise overview with original references see
@@ -462,56 +576,57 @@ plmtest.formula <- function(x, data, ...,
 
 
 ############### Breusch-Godfrey test ##################################
+### Fixes for pbgtest() not needed anymore as of (at least) plm v1.5-13
 ### fixed pbgtest(), copied over from https://r-forge.r-project.org/scm/viewvc.php/pkg/R/pserial.R?view=markup&root=plm&pathrev=127
 # pbgtest() suffered from the same problem as pdwtest() [intercept passed twice to lmtest::bgtest()] - incorporated that from r-forge
 #
 # additional fix: match arguments, so that type="F" (and order.by=) and is passed on to lmtest::bgtest(), thus enabling the small sample
 #                 variant of the test offered by lmtest::bgtest()
-
-
-pbgtest.panelmodel<-function(x, order = NULL, ...) {
-  ## residual serial correlation test based on the residuals of the demeaned
-  ## model (see Wooldridge p.288) and the regular bgtest() in {lmtest}
-  
-  ## structure:
-  ## 1: take demeaned data from 'plm' object
-  ## 2: est. auxiliary model by OLS on demeaned data
-  ## 3: apply bgtest() to auxiliary model and return the result
-  
-  model <- plm:::describe(x, "model")
-  effect <- plm:::describe(x, "effect")
-  theta <- x$ercomp$theta
-  
-  ## retrieve demeaned data
-  demX <- model.matrix(x, model = model, effect = effect, theta=theta)
-  demy <- pmodel.response(model.frame(x), model = model, effect = effect, theta=theta)
-  
-  ## ...and group numerosities
-  Ti <- pdim(x)$Tint$Ti
-  ## set lag order to minimum group numerosity if not specified by user
-  ## (check whether this is sensible)
-  
-  if(is.null(order)) order <- min(Ti)
-  ## bg test on the demeaned model:
-  
-  ## check package availability and load if necessary
-  #lm.ok <- require("lmtest")
-  #if(!lm.ok) stop("package lmtest is needed but not available")
-  
-  ## bgtest is the bgtest, exception made for the method attribute
-  dots <- match.call(expand.dots=FALSE)[["..."]]      # fixed: added expand.dots=FALSE
-  if (!is.null(dots$type)) type <- dots$type else type <- "Chisq"
-  if (!is.null(dots$order.by)) order.by <- dots$order.by else order.by <- NULL
-  
-  auxformula <- demy~demX-1 #if(model == "within") demy~demX-1 else demy~demX
-  lm.mod <- lm(auxformula)
-  bgtest <- bgtest(lm.mod, order = order, type = type, order.by = order.by)
-  bgtest$method <- "Breusch-Godfrey/Wooldridge test for serial correlation in panel models"
-  bgtest$alternative <- "serial correlation in idiosyncratic errors"
-  bgtest$data.name <- paste(deparse(x$call$formula))
-  names(bgtest$statistic) <- if(length(bgtest$parameter)==1) "chisq" else "F"
-  return(bgtest)
-}
+# 
+# 
+# pbgtest.panelmodel<-function(x, order = NULL, ...) {
+#   ## residual serial correlation test based on the residuals of the demeaned
+#   ## model (see Wooldridge p.288) and the regular bgtest() in {lmtest}
+# 
+#   ## structure:
+#   ## 1: take demeaned data from 'plm' object
+#   ## 2: est. auxiliary model by OLS on demeaned data
+#   ## 3: apply bgtest() to auxiliary model and return the result
+# 
+#   model <- plm:::describe(x, "model")
+#   effect <- plm:::describe(x, "effect")
+#   theta <- x$ercomp$theta
+# 
+#   ## retrieve demeaned data
+#   demX <- model.matrix(x, model = model, effect = effect, theta=theta)
+#   demy <- pmodel.response(model.frame(x), model = model, effect = effect, theta=theta)
+# 
+#   ## ...and group numerosities
+#   Ti <- pdim(x)$Tint$Ti
+#   ## set lag order to minimum group numerosity if not specified by user
+#   ## (check whether this is sensible)
+# 
+#   if(is.null(order)) order <- min(Ti)
+#   ## bg test on the demeaned model:
+# 
+#   ## check package availability and load if necessary
+#   #lm.ok <- require("lmtest")
+#   #if(!lm.ok) stop("package lmtest is needed but not available")
+# 
+#   ## bgtest is the bgtest, exception made for the method attribute
+#   dots <- match.call(expand.dots=FALSE)[["..."]]      # fixed: added expand.dots=FALSE
+#   if (!is.null(dots$type)) type <- dots$type else type <- "Chisq"
+#   if (!is.null(dots$order.by)) order.by <- dots$order.by else order.by <- NULL
+# 
+#   auxformula <- demy~demX-1 #if(model == "within") demy~demX-1 else demy~demX
+#   lm.mod <- lm(auxformula)
+#   bgtest <- bgtest(lm.mod, order = order, type = type, order.by = order.by)
+#   bgtest$method <- "Breusch-Godfrey/Wooldridge test for serial correlation in panel models [KT]"
+#   bgtest$alternative <- "serial correlation in idiosyncratic errors"
+#   bgtest$data.name <- paste(deparse(x$call$formula))
+#   names(bgtest$statistic) <- if(length(bgtest$parameter)==1) "chisq" else "F"
+#   return(bgtest)
+# }
 
 
 
@@ -657,7 +772,7 @@ pbltest.formula <- function(x, data, alternative = c("twosided", "onesided"), in
   class(res) <- "htest"
   res
 }
-
+# END pbltest
 
 
 
@@ -896,71 +1011,72 @@ pbsytest.panelmodel <- function(x, test = c("ar","re","j"), normal = FALSE, ...)
 
 
 ############# lag.pseries: able to create negative lags (=leading values) (use k < 0)
+# [not needed anymore as of (at least) v1.5-14/rev. 176]
 ## for convenience: method lead.pseries is also added
 #
 # also as diff against plm_v1.4-0 on github: https://github.com/cran/plm/compare/cd00e7ce878f8ffa0e0bc53ab8692778cb8aaecc...1ef2620b2851ae6d7374d52bfed8141e11eaff76
 # 
-lag.pseries <- function(x, k = 1, ...) {
-  nx <- names(x)
-  index <- attr(x, "index")
-  id <- index[[1]]
-  time <- index[[2]]
-  
-  # catch the case when an index of pdata.frame shall be lagged
-  if (is.factor(x)) if (all(as.character(x) == as.character(id)) | all(as.character(x)==as.character(time))) stop("Lagged vector cannot be index.")
-  
-  alag <- function(x, ak){
-    if (round(ak) != ak) stop("Lagging value 'k' must be whole-numbered (positive, negative or zero)")
-    if (ak > 0){
-      # delete first ak observations for each unit
-      isNAtime <- c(rep(T,ak), diff(as.numeric(time), lag = ak)) != ak
-      isNAid <- c(rep(T,ak), diff(as.numeric(id), lag = ak)) != 0
-      isNA <- as.logical(isNAtime + isNAid)
-      if (is.factor(x)) levs <- levels(x)
-      result <- c(rep(NA, ak), x[1:(length(x)-ak)])
-      result[isNA] <- NA
-      if (is.factor(x)) result <- factor(result, labels = levs)
-      structure(result,
-                names = nx,
-                class = class(x),
-                index = index)
-    } else if (ak < 0) { # => compute leading values
-      
-      # delete last ak observations for each unit
-      isNAtime <- c(as.numeric(time) - c(tail(as.numeric(time), length(time) + ak), rep(T, -ak))) != ak
-      isNAid   <- c(as.numeric(id) - c(tail(as.numeric(id), length(id) + ak) , rep(T, -ak))) != 0
-      isNA <- as.logical(isNAtime + isNAid)
-      result <- c(x[(1-ak):(length(x))], rep(NA, -ak))
-      result[isNA] <- NA
-      if (is.factor(x)) levs <- levels(x)
-      if (is.factor(x)) result <- factor(result, labels = levs)
-      structure(result,
-                names = nx,
-                class = class(x),
-                index = index)
-      
-    } else return(x) # ak == 0 => nothing to do (no lagging/no leading)
-  }
-  
-  if (length(k) > 1){
-    rval <- sapply(k, function(i) alag(x, i))
-    colnames(rval) <- k
-  }
-  else {
-    rval <- alag(x, k)
-  }
-  return(rval)
-}
-
-lead <- function (x, k = 1, ...) {
-  UseMethod("lead")
-}
-
-lead.pseries <- function(x, k = 1, ...) {
-  ret <- lag.pseries(x, k = -k)
-  if (length(k) > 1) colnames(ret) <- k
-  return(ret)
-}
+# lag.pseries <- function(x, k = 1, ...) {
+#   nx <- names(x)
+#   index <- attr(x, "index")
+#   id <- index[[1]]
+#   time <- index[[2]]
+#   
+#   # catch the case when an index of pdata.frame shall be lagged
+#   if (is.factor(x)) if (all(as.character(x) == as.character(id)) | all(as.character(x)==as.character(time))) stop("Lagged vector cannot be index.")
+#   
+#   alag <- function(x, ak){
+#     if (round(ak) != ak) stop("Lagging value 'k' must be whole-numbered (positive, negative or zero)")
+#     if (ak > 0){
+#       # delete first ak observations for each unit
+#       isNAtime <- c(rep(T,ak), diff(as.numeric(time), lag = ak)) != ak
+#       isNAid <- c(rep(T,ak), diff(as.numeric(id), lag = ak)) != 0
+#       isNA <- as.logical(isNAtime + isNAid)
+#       if (is.factor(x)) levs <- levels(x)
+#       result <- c(rep(NA, ak), x[1:(length(x)-ak)])
+#       result[isNA] <- NA
+#       if (is.factor(x)) result <- factor(result, labels = levs)
+#       structure(result,
+#                 names = nx,
+#                 class = class(x),
+#                 index = index)
+#     } else if (ak < 0) { # => compute leading values
+#       
+#       # delete last ak observations for each unit
+#       isNAtime <- c(as.numeric(time) - c(tail(as.numeric(time), length(time) + ak), rep(T, -ak))) != ak
+#       isNAid   <- c(as.numeric(id) - c(tail(as.numeric(id), length(id) + ak) , rep(T, -ak))) != 0
+#       isNA <- as.logical(isNAtime + isNAid)
+#       result <- c(x[(1-ak):(length(x))], rep(NA, -ak))
+#       result[isNA] <- NA
+#       if (is.factor(x)) levs <- levels(x)
+#       if (is.factor(x)) result <- factor(result, labels = levs)
+#       structure(result,
+#                 names = nx,
+#                 class = class(x),
+#                 index = index)
+#       
+#     } else return(x) # ak == 0 => nothing to do (no lagging/no leading)
+#   }
+#   
+#   if (length(k) > 1){
+#     rval <- sapply(k, function(i) alag(x, i))
+#     colnames(rval) <- k
+#   }
+#   else {
+#     rval <- alag(x, k)
+#   }
+#   return(rval)
+# }
+# 
+# lead <- function (x, k = 1, ...) {
+#   UseMethod("lead")
+# }
+# 
+# lead.pseries <- function(x, k = 1, ...) {
+#   ret <- lag.pseries(x, k = -k)
+#   if (length(k) > 1) colnames(ret) <- k
+#   return(ret)
+# }
 
 #### pwfdtest.panelmodel
 ##
@@ -1054,11 +1170,13 @@ pwfdtest.panelmodel <- function(x, ..., h0=c("fd","fe")) {
   return(RVAL)
   
 }
+## END pwfdtest
+
 
 ### pwtest(): fixed panelmodel interface which did not respect the effect parameter, i. e.
 ###           for a supplied panelmode effect="individual" and effect="time" deliver the same result for CRAN version 1.4-0
 ###           formula interface is not affected
-
+### # [still needed anymore as of (at least) v1.5-14]
 pwtest <- function(x, ...){
   UseMethod("pwtest")
 }
@@ -1173,14 +1291,14 @@ pwtest.panelmodel <- function(x, effect=c("individual", "time"), ...){
   return(RVAL)
   
 }
-
+# END pwtest
 
 
 
 ## Breusch-Pagan test against heteroskedasticity for panelmodels
 #
 # only panelmodel interface implemented, not formula interface
-# Code from pbgtest() adapted
+# Code skeleton adapted from pbgtest() 
 
 pbptest <-function(x, ...) {
   ## residual heteroskedasticity test based on the residuals of the demeaned
@@ -1191,11 +1309,10 @@ pbptest <-function(x, ...) {
   ## 2: est. auxiliary model by OLS on demeaned data
   ## 3: apply bptest() to auxiliary model and return the result
   
-  if (!"panelmodel" %in% class(x)) stop("need to supply a panelmodel estimated with plm()")
+  if (!inherits(x, "plm")) stop("need to supply a panelmodel estimated with plm()")
   model <- plm:::describe(x, "model")
   effect <- plm:::describe(x, "effect")
   theta <- x$ercomp$theta
-  
   
   ## retrieve demeaned data
   demX <- model.matrix(x, model = model, effect = effect, theta = theta)
@@ -1226,9 +1343,10 @@ pbptest <-function(x, ...) {
 ## Goldfeld-Quandt test against heteroskedasticity for panelmodels
 #
 # only panelmodel interface implemented, not formula interface
-# Code from pbgtest() adapted, https://cran.r-project.org/package=lmtest
+# Code skeleton from pbgtest() adapted
+# lmtest::gqtest on https://cran.r-project.org/package=lmtest
 
-pgqtest <-function(x, ...) {
+pgqtest <- function(x, ...) {
   ## residual heteroskedasticity test based on the residuals of the demeaned
   ## model and the regular gqtest() in {lmtest}
   
@@ -1237,11 +1355,10 @@ pgqtest <-function(x, ...) {
   ## 2: est. auxiliary model by OLS on demeaned data
   ## 3: apply gqtest() to auxiliary model and return the result
   
-  if (!"panelmodel" %in% class(x)) stop("need to supply a panelmodel estimated with plm()")
+  if (!inherits(x, "plm")) stop("need to supply a panelmodel estimated with plm()")
   model <- plm:::describe(x, "model")
   effect <- plm:::describe(x, "effect")
   theta <- x$ercomp$theta
-  
   
   ## retrieve demeaned data
   demX <- model.matrix(x, model = model, effect = effect, theta = theta)
@@ -1355,130 +1472,123 @@ gqtest <- function(formula, point = 0.5, fraction = 0,
   class(RVAL) <- "htest"
   return(RVAL)
 }
+# END gqtest
+
 
 
 
 ### Imported from r-forge, development version of plm rev. 125
 ### Regression-based Hausman test which can be made robust
-
+# [not needed anymore as of (at least) v1.5-13]
+#
 # Wooldridge (2010), pp. 328-334 (for robust test esp. p. 332-333)
 # Baltagi (2013), pp. 76-77
-phtest.formula <- function(x, data, model = c("within","random"),
-                           method = c("chisq", "aux"),
-                           index=NULL, vcov=NULL, ...){
-  if(length(model)!=2) stop("two models should be indicated")
-  for (i in 1:2){
-    model.name <- model[i]
-    if(!(model.name %in% names(plm:::model.plm.list))){
-      stop("model must be one of ",oneof(model.plm.list))
-    }
-  }
-  switch(match.arg(method),
-         chisq={
-           cl <- match.call(expand.dots = TRUE)
-           cl$model <- model[1]
-           names(cl)[2] <- "formula"
-           m <- match(plm:::plm.arg,names(cl),0)
-           cl <- cl[c(1,m)]
-           cl[[1]] <- as.name("plm")
-           plm.model.1 <- eval(cl,parent.frame())
-           plm.model.2 <- update(plm.model.1, model = model[2])
-           return(phtest(plm.model.1, plm.model.2))
-         },
-         aux={
- ## some interface checks here
-               if(model[1]!="within") {
-                   stop("Please supply 'within' as first model type")
-               }
-             
-               ## set pdata
-               if (!inherits(data, "pdata.frame")) data <- plm.data(data, indexes=index) #, ...)
-               
-               row.names(data) <- NULL # reset rownames of original data set (number rownames in clean sequence) to make rownames
-                                       # comparable for later comparision to obs used in estimation of models (get rid of NA values)
-                                       # [needed becausepmodel.response() and model.matrix() do not retain fancy rownames, but rownames]
-               
-               # calculatate FE and RE model
-               fe_mod <- plm(formula=x, data=data, model=model[1])
-               re_mod <- plm(formula=x, data=data, model=model[2])
-               
-               reY <- pmodel.response(re_mod)
-               reX <- model.matrix(re_mod)[ , -1] # intercept not needed
-               feX <- model.matrix(fe_mod)
-               dimnames(feX)[[2]] <- paste(dimnames(feX)[[2]],
-                                           "tilde", sep=".")
-               
-               ## estimated models could have fewer obs (due droping of NAs) compared to the original data
-               ## => match original data and observations used in estimated models
-               ## routine adapted from lmtest::bptest
-               commonrownames <- intersect(intersect(intersect(row.names(data), names(reY)), row.names(reX)), row.names(feX))
-               if (!(all(c(row.names(data) %in% commonrownames, commonrownames %in% row.names(data))))) {
-                 data <- data[commonrownames, ]
-                 reY  <- reY[commonrownames]
-                 reX  <- reX[commonrownames, ]
-                 feX  <- feX[commonrownames, ]
-               }
-               
-               # Tests of correct matching of obs (just for safety ...)
-                if (!all.equal(length(reY), nrow(data), nrow(reX), nrow(feX)))
-                  stop("number of cases/observations do not match, most likely due to NAs in \"data\"")
-                if (any(c(is.na(names(reY)), is.na(row.names(data)), is.na(row.names(reX)), is.na(row.names(feX)))))
-                    stop("one (or more) rowname(s) is (are) NA")
-                if (!all.equal(names(reY), row.names(data), row.names(reX), row.names(feX)))
-                  stop("row.names of cases/observations do not match, most likely due to NAs in \"data\"")
+# phtest.formula <- function(x, data, model = c("within","random"),
+#                            method = c("chisq", "aux"),
+#                            index=NULL, vcov=NULL, ...){
+#   if(length(model)!=2) stop("two models should be indicated")
+#   for (i in 1:2){
+#     model.name <- model[i]
+#     if(!(model.name %in% names(plm:::model.plm.list))){
+#       stop("model must be one of ",oneof(model.plm.list))
+#     }
+#   }
+#   switch(match.arg(method),
+#          chisq={
+#            cl <- match.call(expand.dots = TRUE)
+#            cl$model <- model[1]
+#            names(cl)[2] <- "formula"
+#            m <- match(plm:::plm.arg,names(cl),0)
+#            cl <- cl[c(1,m)]
+#            cl[[1]] <- as.name("plm")
+#            plm.model.1 <- eval(cl,parent.frame())
+#            plm.model.2 <- update(plm.model.1, model = model[2])
+#            return(phtest(plm.model.1, plm.model.2))
+#          },
+#          aux={
+#  ## some interface checks here
+#                if(model[1]!="within") {
+#                    stop("Please supply 'within' as first model type")
+#                }
+#              
+#                ## set pdata
+#                if (!inherits(data, "pdata.frame")) data <- plm.data(data, indexes=index) #, ...)
+#                
+#                row.names(data) <- NULL # reset rownames of original data set (number rownames in clean sequence) to make rownames
+#                                        # comparable for later comparision to obs used in estimation of models (get rid of NA values)
+#                                        # [needed becausepmodel.response() and model.matrix() do not retain fancy rownames, but rownames]
+#                
+#                # calculatate FE and RE model
+#                fe_mod <- plm(formula=x, data=data, model=model[1])
+#                re_mod <- plm(formula=x, data=data, model=model[2])
+#                
+#                reY <- pmodel.response(re_mod)
+#                reX <- model.matrix(re_mod)[ , -1] # intercept not needed
+#                feX <- model.matrix(fe_mod)
+#                dimnames(feX)[[2]] <- paste(dimnames(feX)[[2]],
+#                                            "tilde", sep=".")
+#                
+#                ## estimated models could have fewer obs (due droping of NAs) compared to the original data
+#                ## => match original data and observations used in estimated models
+#                ## routine adapted from lmtest::bptest
+#                commonrownames <- intersect(intersect(intersect(row.names(data), names(reY)), row.names(reX)), row.names(feX))
+#                if (!(all(c(row.names(data) %in% commonrownames, commonrownames %in% row.names(data))))) {
+#                  data <- data[commonrownames, ]
+#                  reY  <- reY[commonrownames]
+#                  reX  <- reX[commonrownames, ]
+#                  feX  <- feX[commonrownames, ]
+#                }
+#                
+#                # Tests of correct matching of obs (just for safety ...)
+#                 if (!all.equal(length(reY), nrow(data), nrow(reX), nrow(feX)))
+#                   stop("number of cases/observations do not match, most likely due to NAs in \"data\"")
+#                 if (any(c(is.na(names(reY)), is.na(row.names(data)), is.na(row.names(reX)), is.na(row.names(feX)))))
+#                     stop("one (or more) rowname(s) is (are) NA")
+#                 if (!all.equal(names(reY), row.names(data), row.names(reX), row.names(feX)))
+#                   stop("row.names of cases/observations do not match, most likely due to NAs in \"data\"")
+# 
+#                ## fetch indices here, check pdata
+#                ## construct data set and formula for auxiliary regression
+#                data <- data.frame(cbind(data[, 1:2], reY, reX, feX))
+#                auxfm <- as.formula(paste("reY~",
+#                                          paste(dimnames(reX)[[2]],
+#                                                collapse="+"), "+",
+#                                          paste(dimnames(feX)[[2]],
+#                                                collapse="+"), sep=""))
+#                auxmod <- plm(formula=auxfm, data=data, model="pooling")
+#                nvars <- dim(feX)[[2]]
+#                R <- diag(1, nvars)
+#                r <- rep(0, nvars) # here just for clarity of illustration
+#                omega0 <- vcov(auxmod)[(nvars+2):(nvars*2+1),
+#                                       (nvars+2):(nvars*2+1)]
+#                Rbr <- R %*% coef(auxmod)[(nvars+2):(nvars*2+1)] - r
+# 
+#                h2t <- crossprod(Rbr, solve(omega0, Rbr))
+#                ph2t <- pchisq(h2t, df=nvars, lower.tail=FALSE)
+# 
+#                df <- nvars
+#                names(df) <- "df"
+#                names(h2t) <- "chisq"
+# 
+#                if(!is.null(vcov)) {
+#                    vcov <- paste(", vcov: ",
+#                                   paste(deparse(substitute(vcov))),
+#                                   sep="")
+#                }
+# 
+#                haus2 <- list(statistic   = h2t,
+#                              p.value     = ph2t,
+#                              parameter   = df,
+#                              method      = paste("Regression-based Hausman test",
+#                                               vcov, sep=""),
+#                              alternative = "one model is inconsistent",
+#                              data.name   = paste(deparse(substitute(x))))
+#                class(haus2) <- "htest"
+#                return(haus2)
+#          })
+# }
 
-               ## fetch indices here, check pdata
-               ## construct data set and formula for auxiliary regression
-               data <- data.frame(cbind(data[, 1:2], reY, reX, feX))
-               auxfm <- as.formula(paste("reY~",
-                                         paste(dimnames(reX)[[2]],
-                                               collapse="+"), "+",
-                                         paste(dimnames(feX)[[2]],
-                                               collapse="+"), sep=""))
-               auxmod <- plm(formula=auxfm, data=data, model="pooling")
-               nvars <- dim(feX)[[2]]
-               R <- diag(1, nvars)
-               r <- rep(0, nvars) # here just for clarity of illustration
-               omega0 <- vcov(auxmod)[(nvars+2):(nvars*2+1),
-                                      (nvars+2):(nvars*2+1)]
-               Rbr <- R %*% coef(auxmod)[(nvars+2):(nvars*2+1)] - r
-
-               h2t <- crossprod(Rbr, solve(omega0, Rbr))
-               ph2t <- pchisq(h2t, df=nvars, lower.tail=FALSE)
-
-               df <- nvars
-               names(df) <- "df"
-               names(h2t) <- "chisq"
-
-               if(!is.null(vcov)) {
-                   vcov <- paste(", vcov: ",
-                                  paste(deparse(substitute(vcov))),
-                                  sep="")
-               }
-
-               haus2 <- list(statistic   = h2t,
-                             p.value     = ph2t,
-                             parameter   = df,
-                             method      = paste("Regression-based Hausman test",
-                                              vcov, sep=""),
-                             alternative = "one model is inconsistent",
-                             data.name   = paste(deparse(substitute(x))))
-               class(haus2) <- "htest"
-               return(haus2)
-         })
-}
-
-# TODO: wrapper mit UseMethod etc.
-nobs.plm <- function(x) {
-  if (inherits(x, "plm") | inherits(x, "panelmodel")) return(plm::pdim(x)$nT$N) else stop("Input x needs to be of class 'plm' (or 'panelmodel'), i. e. a panel model estimated by plm()")
-}
-
-
-
-
-
-
-
-
-
-
+# [not needed anymore as of (at least) v1.5-13]
+# nobs.plm <- function(x) {
+#   if (inherits(x, "plm") | inherits(x, "panelmodel")) return(plm::pdim(x)$nT$N) else stop("Input x needs to be of class 'plm' (or 'panelmodel'), i. e. a panel model estimated by plm()")
+# }
