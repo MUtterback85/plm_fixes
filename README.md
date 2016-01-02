@@ -1,4 +1,4 @@
-# Own quick'n'dirty fixes/enhancements to plm version 1.4-0
+# Own quick'n'dirty fixes/enhancements to plm version 1.5-14
 see https://cran.r-project.org/package=plm and https://r-forge.r-project.org/projects/plm/
 
 Some code is new by me, some is adapted or just slightly modified from the indicated source
@@ -9,7 +9,7 @@ no warranty
 
 ## How to use
  
- Load this file after package plm (v1.4-0) is loaded. The following functions are then loaded into the global environment and thus used instead of their respective counterparts of package plm:
+ Load this file after package plm is loaded. The following functions are then loaded into the global environment and thus used instead of their respective counterparts of package plm:
    - pdwtest.panelmodel() and pdwtest.formula (used by pdwtest())
    - summary.plm() and print.summary.plm() (used by summary())
    - plmtest()
