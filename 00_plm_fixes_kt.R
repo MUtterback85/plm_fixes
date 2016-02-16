@@ -1,4 +1,4 @@
-# Own quick'n'dirty fixes (?)/enhancements to plm version 1.4-15 as on r-forge (development version)
+# Own quick'n'dirty fixes (?)/enhancements to plm version 1.5-15 as on r-forge (development version)
 # and lmtest as on CRAN (2015-12-30)
 #
 # plm's development version on r-forge (see there for how to install): https://r-forge.r-project.org/R/?group_id=406
@@ -9,7 +9,7 @@
 # In this file, some routines are copied over from the original packages and are modified.
 # Some routines are new.
 #
-# Version of this file 0.8
+# Version of this file 0.8-2
 #
 # no warranty
 #
@@ -37,11 +37,10 @@
 #                                                                is supplied (for robust inference)
 #                             see http://stackoverflow.com/questions/31163353/computing-f-statistic-with-user-supplied-covariance-matrix
 #
-#   - plmtest(): * all tests (bp, honda, kw, ghm) of original plmtest implemented for unbalanced panels;
+#   - plmtest():  [not needed anymore as of (at least) v1.5-16]
+#                * all tests (bp, honda, kw, ghm) of original plmtest implemented for unbalanced panels;
 #                * use correct mixed chisquare distribution (=chibarsquare) for type="ghm";
 #                * fixed p-values for some tests (now everything according to Baltagi's testdata)
-#
-#                [code is also in seperate branch on r-forge: https://r-forge.r-project.org/scm/viewvc.php/branches/kt_unbalanced/plmtest/?root=plm]
 #
 #   - pbgtest() [Breusch-Godfrey test]: [not needed anymore as of (at least) v1.5-13]
 #                           allows to pass on type="F" to lmtest::bgtest(), thus offering the small sample test (F test)
@@ -61,7 +60,8 @@
 #
 #   - pbltest(): added: panelmodel interface for convenience
 #
-#   - pwtest(): pwtest.panelmodel: fixed: respect effect argument for panelmodel interface of test (formula interface was not affected)
+#   - pwtest(): [not needed anymore as of (at least) v1.5-16 (rev. 200), 2016-02-15]
+#               pwtest.panelmodel: fixed: respect effect argument for panelmodel interface of test (formula interface was not affected)
 #
 #   - pbptest(): added: Breusch-Pagan test against heteroskedasticity for panelmodels (wrapper which uses lmtest::bptest())
 #
@@ -88,7 +88,7 @@
 #### load package plm first ########
 library(plm)
 library(lmtest)
-if (packageVersion("plm")    != "1.5.14") stop("This fixes/enhancements are against plm version 1.5-14 from r-forge (published 2015-12-29)")
+if (packageVersion("plm")    != "1.5.16") stop("This fixes/enhancements are against plm version 1.5-16 from r-forge (published 2016-02-15)")
 if (packageVersion("lmtest") != "0.9.34") stop("This fixes/enhancements are against lmtest version 0.9-34 from CRAN (published 2015-06-06)")
 
 options(warnPartialMatchDollar = TRUE)
@@ -435,6 +435,7 @@ rm(mylm)
 
 
 ############## plmtest() ############################################
+## not needed anymore as of plm v1.15-16 on r-forge
 # [code is also in seperate branch on r-forge: https://r-forge.r-project.org/scm/viewvc.php/branches/kt_unbalanced/plmtest/?root=plm]
 # modified to handle unbalanced panels for all test statistics 
 #
@@ -447,132 +448,132 @@ rm(mylm)
 # unbalanced version: Baltagi/Li (1990), A lagrange multiplier test for the error components model with incomplete panels,
 #                    Econometric Reviews, 9:1, pp. 103-107,
 
-plmtest <- function(x,...){
-  UseMethod("plmtest")
-}
-
-plmtest.plm <- function(x,
-                        effect = c("individual", "time", "twoways"),
-                        type = c("honda", "bp", "ghm", "kw"),
-                        ...) {
-  
-  effect <- match.arg(effect)
-  type <- match.arg(type)
-  if (plm:::describe(x, "model") != "pooling") x <- update(x, model = "pooling")
-  pdim <- pdim(x)
-  n <- pdim$nT$n
-  T <- pdim$nT$T
-  N_obs <- pdim$nT$N
-  balanced <- pdim$balanced
-  index <- attr(model.frame(x), "index")
-  id <- index[[1]]
-  time <- index[[2]]
-  T_i <- pdim$Tint$Ti
-  N_t <- pdim$Tint$nt
-  res <- resid(x)
-  
-  ### calc of parts of test statistic ##
-  # calc. is done w/o using matrix calculation, see e.g. Baltagi/Li (1990), p. 106
-  A1 <- as.numeric(crossprod(tapply(res,id,sum))/sum(res^2) - 1)   # == A1 <- sum(tapply(res,id,sum)^2)/sum(res^2) - 1
-  A2 <- as.numeric(crossprod(tapply(res,time,sum))/sum(res^2) - 1) # == A2 <- sum(tapply(res,time,sum)^2)/sum(res^2) - 1
-  
-  M11 <- sum(T_i^2)
-  M22 <- sum(N_t^2)
-  
-  LM1 <- N_obs * (1/sqrt(2*(M11 - N_obs))) * A1 # == sqrt( (((N_obs)^2) / 2) * ( A1^2 / (M11 - N_obs)) ) [except sign due to positive sqrt]
-  LM2 <- N_obs * (1/sqrt(2*(M22 - N_obs))) * A2 # == sqrt( (((N_obs)^2) / 2) * ( A2^2 / (M22 - N_obs)) ) [except sign due to positive sqrt]
-  ### END calc of parts of test statistic ##
-  
-  
-  if (effect != "twoways"){
-    # oneway
-    if (!type %in% c("honda", "bp", "kw"))
-      stop("type must be one of \"honda\", \"bp\" or \"kw\" for a one way model") # kw oneway coincides with honda
-    
-    ifelse(effect == "individual", stat <- LM1, stat <- LM2)
-    stat <- switch(type,
-                   honda = c(normal = stat),
-                   bp    = c(chisq  = stat^2),
-                   kw    = c(normal = stat))
-    parameter <- switch(type,
-                          honda = NULL,
-                          bp = c(df = 1),  # df = 1 in the oneway case (Baltagi (2013), p. 70)
-                          kw = NULL)
-    pval <- switch(type,
-                     honda = pnorm(stat, lower.tail = FALSE),  # honda oneway ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
-                     bp    = pchisq(stat, df = parameter, lower.tail = FALSE), # is df=1 in the one-way case, alternative is two-sided (Baltagi (2013), p. 70/201)
-                     kw    = pnorm(stat, lower.tail = FALSE)) # kw oneway ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
-  }
-  else { # twoways
-    stat <- switch(type,
-                     ghm   = c(chibarsq = max(0,LM1)^2+max(0,LM2)^2),
-                     bp    = c(chisq = LM1^2+LM2^2),
-                     honda = c(normal = (LM1+LM2)/sqrt(2)),
-                     kw    = c(normal = (sqrt(M11-N_obs)/sqrt(M11+M22-2*N_obs))*LM1+(sqrt(M22-N_obs)/sqrt(M11+M22-2*N_obs))*LM2))
-    
-    parameter <- switch(type,
-                          ghm   = c(df0 = 0L, df1=1L, df2=2L, w0=1/4, w1=1/2, w2=1/4),
-                          bp    = c(df = 2),
-                          honda = NULL,
-                          kw    = NULL)
-    
-    pval <- switch(type,
-                     ghm   = (1/4)*pchisq(stat, df=0, lower.tail = F) + (1/2) * pchisq(stat, df=1, lower.tail = F) + (1/4) * pchisq(stat, df=2, lower.tail = F), # mixed chisq (also called chi-bar-square), see Baltagi (2013), pp. 71-72, 74, 88, 202-203, 209
-                     honda = pnorm(stat,lower.tail = FALSE),  # honda two-ways ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
-                     bp    = pchisq(stat, df = parameter,lower.tail = FALSE), # is df = 2 in the twoway case, alternative is two-sided (Baltagi (2013), p. 70/201)
-                     kw    = pnorm(stat, lower.tail = FALSE)) # kw twoways ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
-  }
-  
-  method.type <- switch(type,
-                          honda  = "Honda",
-                          bp     = "Breusch-Pagan",
-                          ghm    = "Gourieroux, Holly and Monfort",
-                          kw     = "King and Wu")
-  
-  method.effect <- switch(effect,
-                            id      = "individual effects",
-                            time    = "time effects",
-                            twoways = "two-ways effects")
-  
-  balanced.type <- ifelse(balanced, "balanced", "unbalanced")
-  
-  method <- paste("Lagrange Multiplier Test - ", method.effect,
-                  " (",method.type,") for ", balanced.type, " panels", sep="")
-  
-  if(type %in% c("honda", "kw")) {
-    RVAL <- list(statistic = stat,
-                 p.value   = pval,
-                 method    = method,
-                 data.name = plm:::data.name(x))
-  }
-  else {
-    RVAL <- list(statistic = stat,
-                 p.value   = pval,
-                 method    = method,
-                 parameter = parameter,
-                 data.name = plm:::data.name(x))
-  }
-  RVAL$alternative <- "significant effects" # TODO: maybe distinguish be b/w one-sided and two-sided alternatives? (bp: two-sided alt.; all others: one-sided alt.?)
-  class(RVAL) <- "htest"
-  return(RVAL)
-} ## END plmtest.plm()
-
-
-plmtest.formula <- function(x, data, ...,
-                            effect = c("individual", "time", "twoways"),
-                            type = c("honda", "bp", "ghm", "kw")) {
-  
-  cl <- match.call(expand.dots = TRUE)
-  cl$model <- "pooling" # plmtest is performed on the pooling model...
-  cl$effect <- NULL     # ... and pooling model has no argument effect...
-  cl$type <- NULL       # ... and no argument type => see below: pass on args effect and type to plmtest.plm()
-  names(cl)[2] <- "formula"
-  m <- match(plm.arg, names(cl), 0)
-  cl <- cl[c(1,m)]
-  cl[[1]] <- as.name("plm")
-  plm.model <- eval(cl, parent.frame())
-  plmtest(plm.model, effect = effect, type = type) # pass on args. effect and type
-}
+# plmtest <- function(x,...){
+#   UseMethod("plmtest")
+# }
+# 
+# plmtest.plm <- function(x,
+#                         effect = c("individual", "time", "twoways"),
+#                         type = c("honda", "bp", "ghm", "kw"),
+#                         ...) {
+#   
+#   effect <- match.arg(effect)
+#   type <- match.arg(type)
+#   if (plm:::describe(x, "model") != "pooling") x <- update(x, model = "pooling")
+#   pdim <- pdim(x)
+#   n <- pdim$nT$n
+#   T <- pdim$nT$T
+#   N_obs <- pdim$nT$N
+#   balanced <- pdim$balanced
+#   index <- attr(model.frame(x), "index")
+#   id <- index[[1]]
+#   time <- index[[2]]
+#   T_i <- pdim$Tint$Ti
+#   N_t <- pdim$Tint$nt
+#   res <- resid(x)
+#   
+#   ### calc of parts of test statistic ##
+#   # calc. is done w/o using matrix calculation, see e.g. Baltagi/Li (1990), p. 106
+#   A1 <- as.numeric(crossprod(tapply(res,id,sum))/sum(res^2) - 1)   # == A1 <- sum(tapply(res,id,sum)^2)/sum(res^2) - 1
+#   A2 <- as.numeric(crossprod(tapply(res,time,sum))/sum(res^2) - 1) # == A2 <- sum(tapply(res,time,sum)^2)/sum(res^2) - 1
+#   
+#   M11 <- sum(T_i^2)
+#   M22 <- sum(N_t^2)
+#   
+#   LM1 <- N_obs * (1/sqrt(2*(M11 - N_obs))) * A1 # == sqrt( (((N_obs)^2) / 2) * ( A1^2 / (M11 - N_obs)) ) [except sign due to positive sqrt]
+#   LM2 <- N_obs * (1/sqrt(2*(M22 - N_obs))) * A2 # == sqrt( (((N_obs)^2) / 2) * ( A2^2 / (M22 - N_obs)) ) [except sign due to positive sqrt]
+#   ### END calc of parts of test statistic ##
+#   
+#   
+#   if (effect != "twoways"){
+#     # oneway
+#     if (!type %in% c("honda", "bp", "kw"))
+#       stop("type must be one of \"honda\", \"bp\" or \"kw\" for a one way model") # kw oneway coincides with honda
+#     
+#     ifelse(effect == "individual", stat <- LM1, stat <- LM2)
+#     stat <- switch(type,
+#                    honda = c(normal = stat),
+#                    bp    = c(chisq  = stat^2),
+#                    kw    = c(normal = stat))
+#     parameter <- switch(type,
+#                           honda = NULL,
+#                           bp = c(df = 1),  # df = 1 in the oneway case (Baltagi (2013), p. 70)
+#                           kw = NULL)
+#     pval <- switch(type,
+#                      honda = pnorm(stat, lower.tail = FALSE),  # honda oneway ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
+#                      bp    = pchisq(stat, df = parameter, lower.tail = FALSE), # is df=1 in the one-way case, alternative is two-sided (Baltagi (2013), p. 70/201)
+#                      kw    = pnorm(stat, lower.tail = FALSE)) # kw oneway ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
+#   }
+#   else { # twoways
+#     stat <- switch(type,
+#                      ghm   = c(chibarsq = max(0,LM1)^2+max(0,LM2)^2),
+#                      bp    = c(chisq = LM1^2+LM2^2),
+#                      honda = c(normal = (LM1+LM2)/sqrt(2)),
+#                      kw    = c(normal = (sqrt(M11-N_obs)/sqrt(M11+M22-2*N_obs))*LM1+(sqrt(M22-N_obs)/sqrt(M11+M22-2*N_obs))*LM2))
+#     
+#     parameter <- switch(type,
+#                           ghm   = c(df0 = 0L, df1=1L, df2=2L, w0=1/4, w1=1/2, w2=1/4),
+#                           bp    = c(df = 2),
+#                           honda = NULL,
+#                           kw    = NULL)
+#     
+#     pval <- switch(type,
+#                      ghm   = (1/4)*pchisq(stat, df=0, lower.tail = F) + (1/2) * pchisq(stat, df=1, lower.tail = F) + (1/4) * pchisq(stat, df=2, lower.tail = F), # mixed chisq (also called chi-bar-square), see Baltagi (2013), pp. 71-72, 74, 88, 202-203, 209
+#                      honda = pnorm(stat,lower.tail = FALSE),  # honda two-ways ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
+#                      bp    = pchisq(stat, df = parameter,lower.tail = FALSE), # is df = 2 in the twoway case, alternative is two-sided (Baltagi (2013), p. 70/201)
+#                      kw    = pnorm(stat, lower.tail = FALSE)) # kw twoways ~ N(0,1), alternative is one-sided (Baltagi (2013), p. 71/202)
+#   }
+#   
+#   method.type <- switch(type,
+#                           honda  = "Honda",
+#                           bp     = "Breusch-Pagan",
+#                           ghm    = "Gourieroux, Holly and Monfort",
+#                           kw     = "King and Wu")
+#   
+#   method.effect <- switch(effect,
+#                             id      = "individual effects",
+#                             time    = "time effects",
+#                             twoways = "two-ways effects")
+#   
+#   balanced.type <- ifelse(balanced, "balanced", "unbalanced")
+#   
+#   method <- paste("Lagrange Multiplier Test - ", method.effect,
+#                   " (",method.type,") for ", balanced.type, " panels", sep="")
+#   
+#   if(type %in% c("honda", "kw")) {
+#     RVAL <- list(statistic = stat,
+#                  p.value   = pval,
+#                  method    = method,
+#                  data.name = plm:::data.name(x))
+#   }
+#   else {
+#     RVAL <- list(statistic = stat,
+#                  p.value   = pval,
+#                  method    = method,
+#                  parameter = parameter,
+#                  data.name = plm:::data.name(x))
+#   }
+#   RVAL$alternative <- "significant effects" # TODO: maybe distinguish be b/w one-sided and two-sided alternatives? (bp: two-sided alt.; all others: one-sided alt.?)
+#   class(RVAL) <- "htest"
+#   return(RVAL)
+# } ## END plmtest.plm()
+# 
+# 
+# plmtest.formula <- function(x, data, ...,
+#                             effect = c("individual", "time", "twoways"),
+#                             type = c("honda", "bp", "ghm", "kw")) {
+#   
+#   cl <- match.call(expand.dots = TRUE)
+#   cl$model <- "pooling" # plmtest is performed on the pooling model...
+#   cl$effect <- NULL     # ... and pooling model has no argument effect...
+#   cl$type <- NULL       # ... and no argument type => see below: pass on args effect and type to plmtest.plm()
+#   names(cl)[2] <- "formula"
+#   m <- match(plm.arg, names(cl), 0)
+#   cl <- cl[c(1,m)]
+#   cl[[1]] <- as.name("plm")
+#   plm.model <- eval(cl, parent.frame())
+#   plmtest(plm.model, effect = effect, type = type) # pass on args. effect and type
+# }
 
 
 ############### Breusch-Godfrey test ##################################
@@ -1173,125 +1174,126 @@ pwfdtest.panelmodel <- function(x, ..., h0=c("fd","fe")) {
 ## END pwfdtest
 
 
-### pwtest(): fixed panelmodel interface which did not respect the effect parameter, i. e.
+### pwtest(): ### # [not needed anymore as of (at least) v1.5-16 (rev. 200), 2016-02-15]
+###           fixed panelmodel interface which did not respect the effect parameter, i. e.
 ###           for a supplied panelmode effect="individual" and effect="time" deliver the same result for CRAN version 1.4-0
 ###           formula interface is not affected
-### # [still needed anymore as of (at least) v1.5-14]
-pwtest <- function(x, ...){
-  UseMethod("pwtest")
-}
-
-pwtest.formula <- function(x, data, ...) {
-  cl <- match.call(expand.dots = TRUE)
-  if (names(cl)[3] == "") names(cl)[3] <- "data"
-  if (is.null(cl$model)) cl$model <- "pooling"
-  if (cl$model != "pooling") stop("pwtest only relevant for pooling models")
-  names(cl)[2] <- "formula"
-  m <- match(plm:::plm.arg,names(cl),0)
-  cl <- cl[c(1,m)]
-  cl[[1]] <- as.name("plm")
-  plm.model <- eval(cl,parent.frame())
-  effect <- plm:::describe(plm.model, "effect")
-  pwtest.panelmodel(plm.model, effect=effect)
-  
-  ## "RE" test ? la Wooldridge, see 10.4.4
-  ## (basically the scaled and standardized estimator for sigma from REmod)
-  ## does not rely on normality or homoskedasticity; 
-  ## H0: composite errors uncorrelated
-  
-  ## ref. Wooldridge, p.264
-  
-  ######### from here generic testing interface from
-  ######### plm to my code
-}
-
-pwtest.panelmodel <- function(x, effect=c("individual", "time"), ...){
-  ## tind is actually not needed here
-  if (plm:::describe(x, "model") != "pooling") stop("pwtest only relevant for pooling models")
-  
-  effect <- match.arg(effect) #effect <- plm:::describe(x, "effect") # here we want the effect as in the call of pwtest(), not of the already estimated model
-  data <- model.frame(x)
-  ## extract indices
-  
-  ## if effect="individual" std., else swap
-  index <- attr(data, "index")
-  if (effect == "individual"){
-    index <- index[[1]]
-    tindex <- index[[2]]
-  }
-  else {
-    index <- index[[2]]
-    tindex <- index[[1]]
-  }
-  ## det. number of groups and df
-  n <- length(unique(index))
-  X <- model.matrix(x)
-  
-  k <- ncol(X)
-  ## det. total number of obs. (robust vs. unbalanced panels)
-  nT <- nrow(X)
-  ## det. max. group numerosity
-  t <- max(tapply(X[,1],index,length))
-  
-  ## ref. Wooldridge, p.264
-  
-  ## extract resids
-  u <- resid(x)
-  
-  ## est. random effect variance
-  ## "pre-allocate" an empty list of length n
-  tres <- vector("list", n)
-  
-  ## list of n "empirical omega-blocks"
-  ## with averages of xproducts of t(i) residuals
-  ## for each group 1..n 
-  ## (possibly different sizes if unbal., thus a list
-  ## and thus, unlike Wooldridge (eq.10.37), ve divide 
-  ## every block by *his* t(t-1)/2)
-  #  unind <- unique(ind)
-  unind <- unique(index) # ????
-  
-  for(i in 1:n) {
-    ut <- u[index == unind[i]]
-    tres[[i]] <- ut%o%ut
-  }
-  
-  ## sum over all upper triangles of emp. omega blocks:
-  ## define aux. function
-  uptrisum <- function(x) {
-    uts <- sum(x[upper.tri(x,diag=FALSE)])
-    return(uts)}
-  
-  ## det. # of upper triangle members (n*t(t-1)/2 if balanced)
-  ti <- sapply(tres, function(x) dim(x)[[1]])
-  uptrinum <- sum(ti*(ti-1)/2)  # don't need this!!
-  
-  ## ...apply to list and sum over resulting vector (df corrected)
-  W <- sum(sapply(tres,uptrisum)) # /sqrt(n) simplifies out
-  
-  ## calculate se(Wstat) as in 10.40
-  seW <- sqrt( sum( sapply(tres,uptrisum)^2 ) )
-  
-  ## NB should we apply a df correction here, maybe that of the standard
-  ## RE estimator? (see page 261) 
-  
-  Wstat <- W/seW
-  names(Wstat) <- "z"
-  pW <- 2*pnorm(abs(Wstat),lower.tail=FALSE) # unlike LM, test is two-tailed!
-  
-  ##(insert usual htest features)
-  dname <- paste(deparse(substitute(formula)))
-  RVAL <- list(statistic = Wstat, parameter = NULL,
-               method = paste("Wooldridge's test for unobserved ",
-                              effect,"effects "),
-               alternative = "unobserved effect",
-               p.value = pW,
-               data.name =   dname)
-  class(RVAL) <- "htest"
-  return(RVAL)
-  
-}
-# END pwtest
+# pwtest <- function(x, ...){
+#   UseMethod("pwtest")
+# }
+# 
+# pwtest.formula <- function(x, data, ...) {
+#   cl <- match.call(expand.dots = TRUE)
+#   if (names(cl)[3] == "") names(cl)[3] <- "data"
+#   if (is.null(cl$model)) cl$model <- "pooling"
+#   if (cl$model != "pooling") stop("pwtest only relevant for pooling models")
+#   names(cl)[2] <- "formula"
+#   m <- match(plm:::plm.arg,names(cl),0)
+#   cl <- cl[c(1,m)]
+#   cl[[1]] <- as.name("plm")
+#   plm.model <- eval(cl,parent.frame())
+#   effect <- plm:::describe(plm.model, "effect")
+#   pwtest.panelmodel(plm.model, effect=effect)
+#   
+#   ## "RE" test ? la Wooldridge, see 10.4.4
+#   ## (basically the scaled and standardized estimator for sigma from REmod)
+#   ## does not rely on normality or homoskedasticity; 
+#   ## H0: composite errors uncorrelated
+#   
+#   ## ref. Wooldridge, p.264
+#   
+#   ######### from here generic testing interface from
+#   ######### plm to my code
+# }
+# 
+# pwtest.panelmodel <- function(x, effect=c("individual", "time"), ...){
+#   ## tind is actually not needed here
+#   if (plm:::describe(x, "model") != "pooling") stop("pwtest only relevant for pooling models")
+#   
+#   effect <- match.arg(effect) # effect <- plm:::describe(x, "effect") # here we want the effect as in the call of pwtest(), not of the already estimated model
+#                               # or do we?
+#   data <- model.frame(x)
+#   ## extract indices
+#   
+#   ## if effect="individual" std., else swap
+#   index <- attr(data, "index")
+#   if (effect == "individual"){
+#     index <- index[[1]]
+#     tindex <- index[[2]]
+#   }
+#   else {
+#     index <- index[[2]]
+#     tindex <- index[[1]]
+#   }
+#   ## det. number of groups and df
+#   n <- length(unique(index))
+#   X <- model.matrix(x)
+#   
+#   k <- ncol(X)
+#   ## det. total number of obs. (robust vs. unbalanced panels)
+#   nT <- nrow(X)
+#   ## det. max. group numerosity
+#   t <- max(tapply(X[,1],index,length))
+#   
+#   ## ref. Wooldridge, p.264
+#   
+#   ## extract resids
+#   u <- resid(x)
+#   
+#   ## est. random effect variance
+#   ## "pre-allocate" an empty list of length n
+#   tres <- vector("list", n)
+#   
+#   ## list of n "empirical omega-blocks"
+#   ## with averages of xproducts of t(i) residuals
+#   ## for each group 1..n 
+#   ## (possibly different sizes if unbal., thus a list
+#   ## and thus, unlike Wooldridge (eq.10.37), ve divide 
+#   ## every block by *his* t(t-1)/2)
+#   #  unind <- unique(ind)
+#   unind <- unique(index) # ????
+#   
+#   for(i in 1:n) {
+#     ut <- u[index == unind[i]]
+#     tres[[i]] <- ut%o%ut
+#   }
+#   
+#   ## sum over all upper triangles of emp. omega blocks:
+#   ## define aux. function
+#   uptrisum <- function(x) {
+#     uts <- sum(x[upper.tri(x,diag=FALSE)])
+#     return(uts)}
+#   
+#   ## det. # of upper triangle members (n*t(t-1)/2 if balanced)
+#   ti <- sapply(tres, function(x) dim(x)[[1]])
+#   uptrinum <- sum(ti*(ti-1)/2)  # don't need this!!
+#   
+#   ## ...apply to list and sum over resulting vector (df corrected)
+#   W <- sum(sapply(tres,uptrisum)) # /sqrt(n) simplifies out
+#   
+#   ## calculate se(Wstat) as in 10.40
+#   seW <- sqrt( sum( sapply(tres,uptrisum)^2 ) )
+#   
+#   ## NB should we apply a df correction here, maybe that of the standard
+#   ## RE estimator? (see page 261) 
+#   
+#   Wstat <- W/seW
+#   names(Wstat) <- "z"
+#   pW <- 2*pnorm(abs(Wstat),lower.tail=FALSE) # unlike LM, test is two-tailed!
+#   
+#   ##(insert usual htest features)
+#   dname <- paste(deparse(substitute(formula)))
+#   RVAL <- list(statistic = Wstat, parameter = NULL,
+#                method = paste("Wooldridge's test for unobserved ",
+#                               effect,"effects "),
+#                alternative = "unobserved effect",
+#                p.value = pW,
+#                data.name =   dname)
+#   class(RVAL) <- "htest"
+#   return(RVAL)
+#   
+# }
+# # END pwtest
 
 
 
