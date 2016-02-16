@@ -18,22 +18,18 @@ no warranty
    - pbsytest()
    - pbltest.panelmodel()
    - pbltest_lm5()
-   - lag.pseries()  - now in dev version of plm (v1.15-16)
+   - lag.pseries() - now in dev version of plm (v1.15-16)
    - lead.pseries() is added for convenience  - now in dev version of plm (v1.15-16)
    - pbgtest()
    - pbptest()
    - pgqtest()
    - r.squared()
    - nobs()  - now in dev version of plm (v1.15-16)
-   - phtest.formula()  - now in dev version of plm (v1.15-16)
-
-
 
 ##### F statistic (summary())
  F statistic when a user specified variance-covariance matrix is supplied (for robust inference)
  [see http://stackoverflow.com/questions/31163353/computing-f-statistic-with-user-supplied-covariance-matrix]
 
- Note: Formula interface not fixed
 
 ##### Durbin-Watson test (pdwtest())
  Durbin-Watson test respecting panel structure
