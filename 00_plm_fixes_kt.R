@@ -1,4 +1,4 @@
-# Own quick'n'dirty fixes (?)/enhancements to plm version 1.5-15 as on r-forge (development version)
+# Own quick'n'dirty fixes (?)/enhancements to plm version 1.5-16/rev. 222 as on r-forge (development version)
 # and lmtest as on CRAN (2015-12-30)
 #
 # plm's development version on r-forge (see there for how to install): https://r-forge.r-project.org/R/?group_id=406
@@ -9,7 +9,7 @@
 # In this file, some routines are copied over from the original packages and are modified.
 # Some routines are new.
 #
-# Version of this file 0.8-2
+# Version of this file 0.9
 #
 # no warranty
 #
@@ -91,8 +91,10 @@ library(lmtest)
 if (packageVersion("plm")    != "1.5.16") stop("This fixes/enhancements are against plm version 1.5-16 from r-forge (published 2016-02-15)")
 if (packageVersion("lmtest") != "0.9.34") stop("This fixes/enhancements are against lmtest version 0.9-34 from CRAN (published 2015-06-06)")
 
-options(warnPartialMatchDollar = TRUE)
-
+options(warnPartialMatchAttr   = TRUE,
+        warnPartialMatchDollar = TRUE,
+        warnPartialMatchArgs   = TRUE)
+options(showWarnCalls = TRUE)
 
 ################## pdwtest.panelmodel() adapted from pseries.R [Durbin-Watson test] ##################
 pdwtest.panelmodel <- function(x, ...) {
@@ -195,125 +197,54 @@ pdwtest.formula <- function(x, data, ...) {
 }
 
 
-################## summary.plm() and print.summary.plm() adapted from plm.methods.R ##################
+################## summary.plm() adapted from plm.methods.R ##################
 
-# fixed: use .vcov (if passed) for F test calculation [use package car::linearHypothesis() for calculation]
-
+# For F test: in the robust case, there seems to be a need to adjust the degrees of freedom to cluster_size -1 for panel models (at least FE models)
+# Cameron/Miller: paper and data to test: http://cameron.econ.ucdavis.edu/research/papers.html
+#  see Stata example 3 on p 16:  http://www.stata.com/manuals14/xtxtreg.pdf
+# Cameron, A.C., J.B. Gelbach and D.L. Miller (2011),
+#  Robust inference with multiway clustering, Journal of Business & Economic Statistics 29 (2011), no. 2, 238–249. http://dx.doi.org/10.1198/jbes.2010.07136
+# and: http://www.stata.com/manuals14/p_robust.pdf#p_robust
+# Eviews (middle of page: wald test with df(1,53): http://www.eviews.com/help/helpintro.html#page/EViews%209%20Help/panel.058.3.html
+# http://stats.stackexchange.com/questions/93787/f-test-formula-under-robust-standard-error
+#
+# However, Gretl (2016a - official) currently does use the normal degrees of freedom
+# need at least the development version of 2016b  (built date 2016-03-26)
 
 summary.plm <- function(object, .vcov = NULL, ...){
-  object$fstatistic <- plm:::Ftest(object, test = "F")
+  object$fstatistic <- plm:::Ftest(object, test = "F", .vcov = .vcov) # Ftest(object, test = "F") # TODO: "activate" robust F test by: Ftest(object, test = "F", .vcov = .vcov)
   model <- plm:::describe(object, "model")
   effect <- plm:::describe(object, "effect")
   object$r.squared <- c(rsq  = r.squared(object),
                         adjrsq = r.squared(object, dfcor = TRUE))
   # construct the table of coefficients
   if (!is.null(.vcov)) {
-    
-    if (!is.matrix(.vcov)) {
-      .vcov <- .vcov(object) # if .vcov is specified as a function, calculate variance-covariance matrix and continue with that
-    }
-    print(.vcov)
-    std.err <- sqrt(diag(.vcov))
-    
-    # overwrite already calculated F statistic as we have a user supplied .vcov which needs to be respected
-    # use car::linearHypothesis() for calculation
-    
-    car.ok <- require("car")
-    if (!car.ok) stop("package car is needed but not available")
-
-    # Need to check if there is an intercept in the model.
-    # Intercept should not be passed to car::linearHypothesis(), because if so, the wrong # degrees of freedom is calculated
-    return_car_lH <- car::linearHypothesis(object, names(coef(object))[if ("(Intercept)" %in% names(coef(object))) -1 else TRUE], test="F", vcov. = .vcov)
-    
-    # Note: has.intercept() returns TRUE for FE models...
-    # return_car_lH <- car::linearHypothesis(object, names(coef(object))[has.intercept(object), -1, TRUE], test="F", vcov. = .vcov)
-    
-    # extract values from returned object from car::linearHypothesis
-    object$fstatistic$statistic <- c("F" = return_car_lH[3][2, ]) # f statistic
-    object$fstatistic$p.value   <- c("F" = return_car_lH[4][2, ]) # p-value for F statistic
-    object$fstatistic$parameter <- c("df1" = return_car_lH[2][2, ], "df2" = return_car_lH[1][2, ]) # Dfs
-
+    if (is.matrix(.vcov))   rvcov <- .vcov
+    if (is.function(.vcov)) rvcov <- .vcov(object)
+    std.err <- sqrt(diag(rvcov))
   }
-  else{
+  else {
     std.err <- sqrt(diag(vcov(object)))
   }
   b <- coefficients(object)
   z <- b / std.err
   p <- 2 * pt(abs(z), df = object$df.residual, lower.tail = FALSE)
-  object$coefficients <- cbind("Estimate"   = b,
-                               "Std. Error" = std.err,
-                               "t-value"    = z,
-                               "Pr(>|t|)"   = p)
-  class(object) <- c("summary.plm", "plm", "panelmodel")
+  
+  # construct the object of class summary.plm
+    object$coefficients <- cbind("Estimate"   = b,
+                                 "Std. Error" = std.err,
+                                 "t-value"    = z,
+                                 "Pr(>|t|)"   = p)
+    if (!is.null(.vcov)) {
+      # put the robust vcov in summary.plm object (next to "normal" vcov)
+      object$rvcov <- rvcov
+      attr(object$rvcov, which = "rvcov.name") <- paste0(deparse(substitute(.vcov)))
+    }
+    class(object) <- c("summary.plm", "plm", "panelmodel")
   object
-}
-
-
-
-print.summary.plm <- function(x,digits= max(3, getOption("digits") - 2),
-                              width=getOption("width"), subset = NULL, ...){
-  formula <- formula(x)
-  has.instruments <- (length(formula)[2] == 2)
-  effect <- plm:::describe(x, "effect")
-  model <- plm:::describe(x, "model")
-  cat(paste(plm:::effect.plm.list[effect]," ",sep=""))
-  cat(paste(plm:::model.plm.list[model]," Model",sep=""))
-  
-  if (model=="random"){
-    ercomp <- plm:::describe(x, "random.method")
-    cat(paste(" \n   (",
-              plm:::random.method.list[ercomp],
-              "'s transformation)\n",
-              sep=""))
-  }
-  else{
-    cat("\n")
-  }
-  if (has.instruments){
-    ivar <- plm:::describe(x, "inst.method")
-    cat(paste("Instrumental variable estimation\n   (",
-              inst.method.list[ivar],
-              "'s transformation)\n",
-              sep=""))
-  }
-  cat("\nCall:\n")
-  print(x$call)
-  cat("\n")
-  pdim <- pdim(x)
-  print(pdim)
-  if (model == "random"){
-    cat("\nEffects:\n")
-    print(x$ercomp)
-  }
-  cat("\nResiduals :\n")
-  save.digits <- unlist(options(digits = digits))
-  on.exit(options(digits = save.digits))
-  print(plm:::sumres(x))
-  
-  cat("\nCoefficients :\n")
-  if (is.null(subset)) printCoefmat(coef(x), digits = digits)
-  else printCoefmat(coef(x)[subset, , drop = FALSE], digits = digits)
-  cat("\n")
-  cat(paste("Total Sum of Squares:    ", signif(plm:::tss.plm(x),digits),"\n", sep=""))
-  cat(paste("Residual Sum of Squares: ", signif(deviance(x),digits),     "\n", sep=""))
-  cat(paste("R-Squared:      ", signif(x$r.squared[1], digits),          "\n", sep=""))
-  cat(paste("Adj. R-Squared: ", signif(x$r.squared[2], digits),          "\n", sep=""))
-  fstat <- x$fstatistic
-  if (names(fstat$statistic) == "F"){
-    cat(paste("F-statistic: ",signif(fstat$statistic),
-              " on ",fstat$parameter["df1"]," and ",fstat$parameter["df2"],
-              " DF, p-value: ",format.pval(fstat$p.value,digits=digits),"\n",sep=""))
-  }
-  else{
-    cat(paste("Chisq: ",signif(fstat$statistic),
-              " on ",fstat$parameter,
-              " DF, p-value: ",format.pval(fstat$p.value,digits=digits),"\n",sep=""))
-    
-  }
-  invisible(x)
-}
-# END print.summary.plm
-
+} ## END summary.plm
+assignInNamespace("summary.plm", summary.plm, envir = as.environment("package:plm"))
+rm(summary.plm)
 
 # adjusted R-squared corrected (now meets lm's adjusted R-squared for pooling models)
 # still: pooling models without intercept: R-squared and adj. R-squared are not correct
@@ -432,6 +363,73 @@ rm(mylm)
 
 
 
+##### lag.pseries with warning if non-consecutive time series detected ####
+lag.pseries <- function(x, k = 1, ...) {
+  index <- attr(x, "index")
+  id <- index[[1]]
+  time <- index[[2]]
+
+  # catch the case when an index of pdata.frame shall be lagged (index variables are always factors)
+    # NB: this catches - unintentionally - also the case when a factor variable is the same "on the character level"
+    # as one of the corresponding index variables but not the index variable itself
+    #
+    # -> shall we prevent lagging of index variables at all? -> turned off for now, 2016-03-03
+    # if (is.factor(x)) if (all(as.character(x) == as.character(id)) | all(as.character(x)==as.character(time))) stop("Lagged vector cannot be index.")
+
+  alag <- function(x, ak){
+    if (round(ak) != ak) stop("Lagging value 'k' must be whole-numbered (positive, negative or zero)")
+    if (ak > 0) {
+
+      # NB: this code assumes consecutive time periods and produces wrong results
+      #     for lag > 1 and non-consecutive time periods
+
+      # delete first ak observations for each unit
+      isNAtime <- c(rep(T, ak), (diff(as.numeric(time), lag = ak) != ak))
+      isNAid   <- c(rep(T, ak), (diff(as.numeric(id),   lag = ak) != 0))
+      isNA <- (isNAtime | isNAid)
+
+      result <- x                                             # copy x first ...
+      result[1:ak] <- NA                                      # ... then make first ak obs NA ...
+      result[(ak+1):length(result)] <- x[1:(length(x)-ak)]    # ... shift and ...
+      result[isNA] <- NA                                      # ... make more NAs in between: this way, we keep: all factor levels, names, classes
+
+    } else if (ak < 0) { # => compute leading values
+
+      # NB: this code assumes consecutive time periods and produces wrong results
+      #     for lag > 1 and non-consecutive time periods
+
+      # delete last |ak| observations for each unit
+      num_time <- as.numeric(time)
+      num_id   <- as.numeric(id)
+      isNAtime <- c(c((num_time[1:(length(num_time)+ak)] - num_time[(-ak+1):length(num_time)]) != ak), rep(T, -ak))
+      isNAid   <- c(c((num_id[1:(length(num_id)+ak)]     - num_id[(-ak+1):length(num_id)])     != 0),  rep(T, -ak))
+      isNA <- (isNAtime | isNAid)
+
+      result <- x                                            # copy x first ...
+      result[(length(result)+ak+1):length(result)] <- NA     # ... then make last |ak| obs NA ...
+      result[1:(length(result)+ak)] <- x[(1-ak):(length(x))] # ... shift and ...
+      result[isNA] <- NA                                     # ... make more NAs in between: this way, we keep: all factor levels, names, classes
+
+    } else { # ak == 0 => nothing to do, return original pseries (no lagging/no leading)
+      result <- x
+    }
+
+    return(result)
+  } # END function alag
+
+  if (length(k) > 1) {
+    rval <- sapply(k, function(i) alag(x, i))
+    colnames(rval) <- k
+  }
+  else {
+    rval <- alag(x, k)
+  }
+  if(!all(is.pconsecutive(x, na.rm.tindex = TRUE))) warning("non-consecutive time periods")
+  if(!all(is.pconsecutive(x, na.rm.tindex = TRUE)) & abs(k) > 1) warning("non-consecutive time periods and k > 1")
+  return(rval)
+}
+assignInNamespace("lag.pseries", lag.pseries, envir = as.environment("package:plm"))
+rm(lag.pseries)
 
 
 ############## plmtest() ############################################
@@ -783,31 +781,33 @@ pbltest.formula <- function(x, data, alternative = c("twosided", "onesided"), in
 
 ############# Baltagi/Li (1995), LM5 - An LM test for first-order serial correlation in a fixed effects model (can also be used in RE models)
 # LM5 (p. 138-139: An LM test for first-order serial correlation in a fixed effects model):
-# LM5 is LM3 (from p. 136) only with the residuals of the FE model instead of the OLS model (in matrix B)
+# LM5 is LM3 (from p. 136) with the residuals of the FE model instead of the OLS model (in matrix B)
 # Thus, matrix B calculated in pblsytest is already in the right form for LM5 but need to
 # subsitute the residuals for the FE residuals.
 
 # p. 136: "LM1, is exactly the same as the joint test statistic derived by Baltagi and Li (1991) for
 # AR(1) residual disturbances and random individual effects." => matrix B calculated in pblsytest(),
-# adapt for use here
+# adapted for use here
 #
-# see equivalently Baltagi (2005), Econometric Analysis of Panel Data, 3rd edition, pp. 97-98 or
+# see (equivalent) Baltagi (2005), Econometric Analysis of Panel Data, 3rd edition, pp. 97-98 or
 #                  Baltagi (2013), Econometric Analysis of Panel Data, 5th edition, pp. 108-109
 #
 # Baltagi (2005), p. 98 [=Baltagi (2013), p. 109]:
 # "Since the [w]ithin transformation wipes out the individual effects whether fixed or random,
 #  one can also use [LM5] to test for serial correlation in the random effects models."
 #
-# Baltagi/Li (1995), p. 138 or Baltagi (2013), pp. 109, 113: onesided. Under H0, this is asymptotically distributed (for large T) as N(0, 1).
+# Baltagi/Li (1995), p. 138 or Baltagi (2013), pp. 109, 113:
+#       onesided. Under H0, this is asymptotically distributed (for large T) as N(0, 1).
 
-pbltest_lm5 <- function(x, ...) {
+pbltest_lm5 <- function(x, ...) { # panelmodel interface (plm interface)
   
   if (plm:::describe(x, "model") == "pooling") stop("Test only for within effects (=fixed effects) or random effects models.")
   
 ##### following code adapted from pbsytest() #####
   resfe <- resid(x)
   data <- model.frame(x)
-    ## extract indices
+  
+  ## extract indices
   indexvars <- attr(data, "index")
   index <- indexvars[[1]]
   tindex <- indexvars[[2]]
@@ -857,8 +857,8 @@ pbltest_lm5 <- function(x, ...) {
                method = "LM test for first-order serial correlation in a fixed effects model \n
                          LM5 in Baltagi/Li (1995), p. 138-139",
                alternative = "AR(1) errors (rho > 0) sub fixed effects",
-               p.value = pnorm(LM5_statsitic,lower.tail=FALSE), # Baltagi/Li (1995), p. 138 or Baltagi (2013), pp. 109, 113: onesided. Under H0, this is asymptotically distributed (for large T) as N(0, 1).
-               data.name = dname)
+               p.value = pnorm(LM5_statsitic,lower.tail=FALSE), # Baltagi/Li (1995), p. 138 or Baltagi (2013), pp. 109, 113: onesided.
+               data.name = dname)                               #  Under H0, this is asymptotically distributed (for large T) as N(0, 1).
   class(RVAL) <- "htest"
   return(RVAL)
 } ## END: pbltest_lm5
@@ -1594,3 +1594,53 @@ gqtest <- function(formula, point = 0.5, fraction = 0,
 # nobs.plm <- function(x) {
 #   if (inherits(x, "plm") | inherits(x, "panelmodel")) return(plm::pdim(x)$nT$N) else stop("Input x needs to be of class 'plm' (or 'panelmodel'), i. e. a panel model estimated by plm()")
 # }
+
+
+## texreg: avoid partial matching
+library(texreg)
+extract.plm <- function(model, include.rsquared = TRUE, include.adjrs = TRUE, 
+    include.nobs = TRUE, ...) {
+  s <- summary(model, ...)
+  
+  coefficient.names <- rownames(coef(s))
+  coefficients <- coef(s)[, 1]
+  standard.errors <- coef(s)[, 2]
+  significance <- coef(s)[, 4]
+  
+  rs <- s$r.squared[1]
+  adj <- s$r.squared[2]
+  n <- length(residuals(s))
+  
+  gof <- numeric()
+  gof.names <- character()
+  gof.decimal <- logical()
+  if (include.rsquared == TRUE) {
+    gof <- c(gof, rs)
+    gof.names <- c(gof.names, "R$^2$")
+    gof.decimal <- c(gof.decimal, TRUE)
+  }
+  if (include.adjrs == TRUE) {
+    gof <- c(gof, adj)
+    gof.names <- c(gof.names, "Adj.\ R$^2$")
+    gof.decimal <- c(gof.decimal, TRUE)
+  }
+  if (include.nobs == TRUE) {
+    gof <- c(gof, n)
+    gof.names <- c(gof.names, "Num.\ obs.")
+    gof.decimal <- c(gof.decimal, FALSE)
+  }
+  
+  tr <- createTexreg(
+      coef.names = coefficient.names, 
+      coef = coefficients, 
+      se = standard.errors, 
+      pvalues = significance, 
+      gof.names = gof.names, 
+      gof = gof, 
+      gof.decimal = gof.decimal
+  )
+  return(tr)
+}
+## end
+assignInNamespace("extract.plm", extract.plm, envir = as.environment("package:texreg"))
+rm(extract.plm)
